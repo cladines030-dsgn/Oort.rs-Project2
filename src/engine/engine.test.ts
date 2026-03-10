@@ -41,9 +41,9 @@ function createSimulationMock(): { simulation: SimulationSystem; getStepCount: (
   let stepCount = 0;
   let state: SimulationStateSnapshot = {
     tick: 0,
-    ships: 2,
-    projectiles: 0,
-    seed: 0
+    seed: 0,
+    ships: [],
+    projectileCount: 0
   };
 
   return {
@@ -59,6 +59,9 @@ function createSimulationMock(): { simulation: SimulationSystem; getStepCount: (
       },
       getState(): SimulationStateSnapshot {
         return state;
+      },
+      registerShipCodeHook(): void {
+        // no-op
       }
     },
     getStepCount(): number {

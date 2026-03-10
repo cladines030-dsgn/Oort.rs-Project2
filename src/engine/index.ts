@@ -1,0 +1,86 @@
+import type { EngineDependencies, EngineSystem, SimulationStateSnapshot } from "../contracts";
+
+export interface EngineScheduler {
+  requestAnimationFrame(callback: FrameRequestCallback): number;
+  cancelAnimationFrame(id: number): void;
+  now(): number;
+}
+
+function createBrowserScheduler(): EngineScheduler {
+  return {
+    requestAnimationFrame(callback: FrameRequestCallback): number {
+      return window.requestAnimationFrame(callback);
+    },
+    cancelAnimationFrame(id: number): void {
+      window.cancelAnimationFrame(id);
+    },
+    now(): number {
+      return performance.now();
+    }
+  };
+}
+
+export function createEngine(
+  dependencies: EngineDependencies,
+  scheduler: EngineScheduler = createBrowserScheduler()
+): EngineSystem {
+  let running = false;
+  let rafId = -1;
+  let previousFrameMs = 0;
+  let accumulatorMs = 0;
+  const timestepMs = dependencies.timestepSeconds * 1000;
+
+  const frame: FrameRequestCallback = () => {
+    if (!running) {
+      return;
+    }
+
+    const now = scheduler.now();
+    const elapsedMs = Math.max(0, now - previousFrameMs);
+    previousFrameMs = now;
+    accumulatorMs += elapsedMs;
+
+    let latestState: SimulationStateSnapshot | undefined;
+
+    while (accumulatorMs >= timestepMs) {
+      latestState = dependencies.simulation.step(dependencies.timestepSeconds);
+      dependencies.combat.resolveTick(latestState);
+      accumulatorMs -= timestepMs;
+    }
+
+    dependencies.ui.render(latestState ?? dependencies.simulation.getState());
+    rafId = scheduler.requestAnimationFrame(frame);
+  };
+
+  return {
+    start(seed = 1): void {
+      if (running) {
+        return;
+      }
+
+      running = true;
+      accumulatorMs = 0;
+      previousFrameMs = scheduler.now();
+
+      dependencies.simulation.initialize(seed);
+      dependencies.combat.initialize();
+      dependencies.editor.initialize();
+
+      dependencies.ui.updateStatus("Simulation running");
+      dependencies.ui.render(dependencies.simulation.getState());
+      rafId = scheduler.requestAnimationFrame(frame);
+    },
+    stop(): void {
+      if (!running) {
+        return;
+      }
+
+      running = false;
+      scheduler.cancelAnimationFrame(rafId);
+      dependencies.ui.updateStatus("Simulation stopped");
+    },
+    isRunning(): boolean {
+      return running;
+    }
+  };
+}

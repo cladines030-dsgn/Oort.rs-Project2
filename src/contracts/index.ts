@@ -17,6 +17,8 @@ export interface ShipClassStats {
   readonly maxLateralAccel: number;
   /** Maximum angular acceleration in rad/s². */
   readonly maxAngularAccel: number;
+  /** Maximum angular velocity in rad/s. */
+  readonly maxAngularSpeed: number;
   /** Delta-v budget in m/s; null for crewed ships whose fuel is unlimited. */
   readonly maxFuel: number | null;
 }
@@ -64,6 +66,18 @@ export interface ShipCommandsApi {
   maxBackwardAcceleration(): number;
   maxLateralAcceleration(): number;
   maxAngularAcceleration(): number;
+  maxAngularSpeed(): number;
+
+  /** Apply forward/backward thrust power in [-1, 1]. */
+  thrust(power: number): void;
+  /** Apply lateral thrust power in [-1, 1]. Positive is starboard (+y local). */
+  strafe(power: number): void;
+  /** Damp local forward and lateral velocity components using available acceleration limits. */
+  brake(power?: number): void;
+  /** Steer toward a target heading in radians with angular speed and acceleration limits. */
+  setHeading(angle: number): void;
+  /** Navigation helper that steers and thrusts toward a world-space waypoint. */
+  moveTo(x: number, y: number): void;
 
   /** Accelerate in ship-local space: x = forward (+) / backward (−), y = lateral, z = vertical (reserved). Units: m/s². */
   accelerate(acceleration: Vec3): void;

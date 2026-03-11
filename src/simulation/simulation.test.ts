@@ -100,6 +100,7 @@ describe("simulation determinism", () => {
     expect(SHIP_CLASS_STATS.Fighter.maxBackwardAccel).toBe(30);
     expect(SHIP_CLASS_STATS.Fighter.maxLateralAccel).toBe(30);
     expect(SHIP_CLASS_STATS.Fighter.maxAngularAccel).toBeCloseTo(2 * Math.PI, 5);
+    expect(SHIP_CLASS_STATS.Fighter.maxAngularSpeed).toBeCloseTo(2 * Math.PI, 5);
     expect(SHIP_CLASS_STATS.Frigate.maxHealth).toBe(10_000);
     expect(SHIP_CLASS_STATS.Cruiser.maxHealth).toBe(20_000);
     expect(SHIP_CLASS_STATS.Missile.maxFuel).toBe(2_000);
@@ -140,6 +141,111 @@ describe("simulation determinism", () => {
     expect(sim.getState().tick).toBe(1);
     sim.step(1 / 60);
     expect(sim.getState().tick).toBe(2);
+  });
+
+  test("velocity persists from inertia when thrust is removed", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+    });
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      if (api.currentTick() < 60) {
+        api.thrust(1);
+      }
+    });
+
+    for (let i = 0; i < 120; i++) {
+      sim.step(1 / 60);
+    }
+
+    const ship = sim.getState().ships[0];
+    expect(ship.velocity.x).toBeCloseTo(60, 1);
+    expect(ship.position.x).toBeCloseTo(90.5, 1);
+    expect(ship.position.y).toBeCloseTo(0, 5);
+  });
+
+  test("angular velocity is clamped to class rotational speed limit", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+    });
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      api.torque(1_000);
+    });
+
+    for (let i = 0; i < 300; i++) {
+      sim.step(1 / 60);
+    }
+
+    const ship = sim.getState().ships[0];
+    expect(Math.abs(ship.angularVelocity)).toBeLessThanOrEqual(
+      SHIP_CLASS_STATS.Fighter.maxAngularSpeed + 1e-9,
+    );
+  });
+
+  test("setHeading steers toward target heading", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+    });
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      api.setHeading(Math.PI / 2);
+    });
+
+    for (let i = 0; i < 240; i++) {
+      sim.step(1 / 60);
+    }
+
+    const ship = sim.getState().ships[0];
+    expect(ship.heading).toBeCloseTo(Math.PI / 2, 1);
+  });
+
+  test("moveTo helper reduces waypoint distance over time", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+    });
+
+    const target = vec3(1_000, 500, 0);
+    const initialDistance = Math.hypot(target.x, target.y);
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      api.moveTo(target.x, target.y);
+    });
+
+    for (let i = 0; i < 300; i++) {
+      sim.step(1 / 60);
+    }
+
+    const ship = sim.getState().ships[0];
+    const finalDistance = Math.hypot(target.x - ship.position.x, target.y - ship.position.y);
+
+    expect(finalDistance).toBeLessThan(initialDistance * 0.5);
+  });
+
+  test("thrust and strafe helpers compose in local space", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+    });
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      api.thrust(1);
+      api.strafe(0.5);
+    });
+
+    sim.step(1 / 60);
+    const ship = sim.getState().ships[0];
+    expect(ship.velocity.x).toBeCloseTo(1, 5);
+    expect(ship.velocity.y).toBeCloseTo(0.25, 5);
   });
 });
 

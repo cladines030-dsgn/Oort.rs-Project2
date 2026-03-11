@@ -9,7 +9,7 @@ import type {
   SimulationSystem,
   WorldConfig,
 } from "../contracts";
-import { vec3, vec3Add, vec3Length, vec3RotateXY, vec3Scale, VEC3_ZERO } from "../math";
+import { vec3, vec3Add, vec3AngleXY, vec3Length, vec3RotateXY, vec3Scale, vec3Sub, VEC3_ZERO } from "../math";
 import type { Vec3 } from "../math";
 
 
@@ -20,6 +20,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxBackwardAccel: 30,
     maxLateralAccel: 30,
     maxAngularAccel: 2 * Math.PI,
+    maxAngularSpeed: 2 * Math.PI,
     maxFuel: null,
   },
   Frigate: {
@@ -28,6 +29,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxBackwardAccel: 5,
     maxLateralAccel: 5,
     maxAngularAccel: Math.PI / 4,
+    maxAngularSpeed: Math.PI / 2,
     maxFuel: null,
   },
   Cruiser: {
@@ -36,6 +38,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxBackwardAccel: 2.5,
     maxLateralAccel: 2.5,
     maxAngularAccel: Math.PI / 8,
+    maxAngularSpeed: Math.PI / 4,
     maxFuel: null,
   },
   Missile: {
@@ -44,6 +47,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxBackwardAccel: 0,
     maxLateralAccel: 100,
     maxAngularAccel: 4 * Math.PI,
+    maxAngularSpeed: 4 * Math.PI,
     maxFuel: 2_000,
   },
   Torpedo: {
@@ -52,6 +56,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxBackwardAccel: 0,
     maxLateralAccel: 20,
     maxAngularAccel: 2 * Math.PI,
+    maxAngularSpeed: 2 * Math.PI,
     maxFuel: 3_000,
   },
 };
@@ -115,6 +120,18 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function normalizeAngle(angle: number): number {
+  return Math.atan2(Math.sin(angle), Math.cos(angle));
+}
+
+function angleDiff(target: number, current: number): number {
+  return normalizeAngle(target - current);
+}
+
+function pendingAccelerationOrZero(entity: ShipEntity): Vec3 {
+  return entity.pending.acceleration ?? VEC3_ZERO;
+}
+
 function freshPending(): PendingCommands {
   return { acceleration: null, turn: null, torque: null };
 }
@@ -164,6 +181,12 @@ function buildSnapshot(world: WorldState): SimulationStateSnapshot {
 
 function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
   const stats = SHIP_CLASS_STATS[entity.class];
+  const setHeadingImpl = (targetHeading: number): void => {
+    const headingError = angleDiff(targetHeading, entity.heading);
+    const targetAngularVelocity = clamp(headingError * 4, -stats.maxAngularSpeed, stats.maxAngularSpeed);
+    entity.pending.turn = targetAngularVelocity;
+  };
+
   return {
     position: () => entity.position,
     velocity: () => entity.velocity,
@@ -177,6 +200,75 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
     maxBackwardAcceleration: () => stats.maxBackwardAccel,
     maxLateralAcceleration: () => stats.maxLateralAccel,
     maxAngularAcceleration: () => stats.maxAngularAccel,
+    maxAngularSpeed: () => stats.maxAngularSpeed,
+    thrust(power: number): void {
+      const clampedPower = clamp(power, -1, 1);
+      const current = pendingAccelerationOrZero(entity);
+      const localX =
+        clampedPower >= 0
+          ? clampedPower * stats.maxForwardAccel
+          : clampedPower * stats.maxBackwardAccel;
+      entity.pending.acceleration = vec3(localX, current.y, 0);
+    },
+    strafe(power: number): void {
+      const clampedPower = clamp(power, -1, 1);
+      const current = pendingAccelerationOrZero(entity);
+      entity.pending.acceleration = vec3(current.x, clampedPower * stats.maxLateralAccel, 0);
+    },
+    brake(power = 1): void {
+      const brakePower = clamp(power, 0, 1);
+      const localVelocity = vec3RotateXY(entity.velocity, -entity.heading);
+
+      const accelX =
+        localVelocity.x > 0
+          ? -stats.maxBackwardAccel * brakePower
+          : localVelocity.x < 0
+            ? stats.maxForwardAccel * brakePower
+            : 0;
+      const accelY =
+        localVelocity.y > 0
+          ? -stats.maxLateralAccel * brakePower
+          : localVelocity.y < 0
+            ? stats.maxLateralAccel * brakePower
+            : 0;
+
+      entity.pending.acceleration = vec3(accelX, accelY, 0);
+    },
+    setHeading(angle: number): void {
+      setHeadingImpl(angle);
+    },
+    moveTo(x: number, y: number): void {
+      const toTarget = vec3Sub(vec3(x, y, 0), entity.position);
+      const distance = Math.hypot(toTarget.x, toTarget.y);
+
+      if (distance <= 1) {
+        const localVelocity = vec3RotateXY(entity.velocity, -entity.heading);
+        const accelX = clamp(-localVelocity.x * 2, -stats.maxBackwardAccel, stats.maxForwardAccel);
+        const accelY = clamp(-localVelocity.y * 2, -stats.maxLateralAccel, stats.maxLateralAccel);
+        entity.pending.acceleration = vec3(accelX, accelY, 0);
+        return;
+      }
+
+      const targetHeading = vec3AngleXY(toTarget);
+      setHeadingImpl(targetHeading);
+
+      const localVelocity = vec3RotateXY(entity.velocity, -entity.heading);
+      const headingError = angleDiff(targetHeading, entity.heading);
+      const alignment = Math.max(0, Math.cos(headingError));
+      const desiredForwardSpeed = Math.min(Math.sqrt(2 * stats.maxBackwardAccel * distance), 250) * alignment;
+
+      let forwardAccel = clamp(
+        (desiredForwardSpeed - localVelocity.x) * 2,
+        -stats.maxBackwardAccel,
+        stats.maxForwardAccel,
+      );
+      if (alignment < 0.2) {
+        forwardAccel = clamp(-localVelocity.x * 2, -stats.maxBackwardAccel, stats.maxForwardAccel);
+      }
+
+      const lateralAccel = clamp(-localVelocity.y * 2, -stats.maxLateralAccel, stats.maxLateralAccel);
+      entity.pending.acceleration = vec3(forwardAccel, lateralAccel, 0);
+    },
     accelerate(acceleration: Vec3): void {
       entity.pending.acceleration = acceleration;
     },
@@ -206,13 +298,16 @@ function physicsUpdate(entity: ShipEntity, dt: number): void {
 
   // --- Angular velocity via turn command (target velocity, approached at max angular accel) ---
   if (pending.turn !== null) {
+    const targetAngularVelocity = clamp(pending.turn, -stats.maxAngularSpeed, stats.maxAngularSpeed);
     const maxDelta = stats.maxAngularAccel * dt;
-    const diff = pending.turn - entity.angularVelocity;
+    const diff = targetAngularVelocity - entity.angularVelocity;
     entity.angularVelocity += clamp(diff, -maxDelta, maxDelta);
   }
 
+  entity.angularVelocity = clamp(entity.angularVelocity, -stats.maxAngularSpeed, stats.maxAngularSpeed);
+
   // --- Heading ---
-  entity.heading += entity.angularVelocity * dt;
+  entity.heading = normalizeAngle(entity.heading + entity.angularVelocity * dt);
 
   // --- Linear acceleration (ship-local XY plane → world XY plane, z pinned at 0) ---
   if (pending.acceleration !== null) {

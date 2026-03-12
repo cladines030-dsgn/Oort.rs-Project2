@@ -8,8 +8,8 @@ const TWO_FIGHTER_CONFIG: WorldConfig = {
   worldSize: 20_000,
   ships: [
     { team: 0, class: "Fighter", position: vec3(-500, 0, 0), heading: 0 },
-    { team: 1, class: "Fighter", position: vec3(500, 0, 0), heading: Math.PI },
-  ],
+    { team: 1, class: "Fighter", position: vec3(500, 0, 0), heading: Math.PI }
+  ]
 };
 
 describe("simulation determinism", () => {
@@ -59,7 +59,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
     sim.registerShipCodeHook((_id, _team, api) => {
       api.accelerate(vec3(api.maxForwardAcceleration(), 0, 0));
@@ -80,7 +80,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
     sim.registerShipCodeHook((_id, _team, api) => {
       api.accelerate(vec3(0, api.maxLateralAcceleration(), 0));
@@ -113,7 +113,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
     sim.registerShipCodeHook((_id, _team, api) => {
       api.accelerate(vec3(9_999, 0, 0)); // far above max
@@ -147,7 +147,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
 
     sim.registerShipCodeHook((_id, _team, api) => {
@@ -170,7 +170,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
 
     sim.registerShipCodeHook((_id, _team, api) => {
@@ -183,7 +183,7 @@ describe("simulation determinism", () => {
 
     const ship = sim.getState().ships[0];
     expect(Math.abs(ship.angularVelocity)).toBeLessThanOrEqual(
-      SHIP_CLASS_STATS.Fighter.maxAngularSpeed + 1e-9,
+      SHIP_CLASS_STATS.Fighter.maxAngularSpeed + 1e-9
     );
   });
 
@@ -191,7 +191,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
 
     sim.registerShipCodeHook((_id, _team, api) => {
@@ -210,7 +210,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
 
     const target = vec3(1_000, 500, 0);
@@ -234,7 +234,7 @@ describe("simulation determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
     });
 
     sim.registerShipCodeHook((_id, _team, api) => {
@@ -256,8 +256,8 @@ describe("simulation replay determinism", () => {
       ships: [
         { team: 0, class: "Fighter", position: vec3(-1_000, 0, 0), heading: 0 },
         { team: 1, class: "Fighter", position: vec3(1_000, 0, 0), heading: Math.PI },
-        { team: 0, class: "Frigate", position: vec3(-2_000, 200, 0), heading: Math.PI / 4 },
-      ],
+        { team: 0, class: "Frigate", position: vec3(-2_000, 200, 0), heading: Math.PI / 4 }
+      ]
     };
     function runSim(): SimulationStateSnapshot {
       const sim = createSimulationSystem();
@@ -278,7 +278,7 @@ describe("simulation replay determinism", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {
       worldSize: 20_000,
-      ships: [{ team: 0, class: "Missile", position: vec3(0, 0, 0), heading: 0 }],
+      ships: [{ team: 0, class: "Missile", position: vec3(0, 0, 0), heading: 0 }]
     });
     sim.registerShipCodeHook((_id, _team, api) => {
       api.accelerate(vec3(api.maxForwardAcceleration(), 0, 0));

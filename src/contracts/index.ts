@@ -4,8 +4,40 @@ export type { Vec3 };
 
 export type ShipProgramSource = string;
 
-
 export type ShipClass = "Fighter" | "Frigate" | "Cruiser" | "Missile" | "Torpedo";
+
+/**
+ * Weapon types supported in the combat system.
+ * Each ship class has a predetermined loadout of weapons indexed 0..n.
+ */
+export type WeaponType = "Gun" | "Missile" | "Torpedo" | "Decoy";
+
+/**
+ * Stats for a single weapon type. Determines reload time, projectile speed, travel distance, etc.
+ */
+export interface WeaponStats {
+  readonly type: WeaponType;
+  /** Time between shots in seconds. */
+  readonly reloadTime: number;
+  /** Projectile velocity in m/s. */
+  readonly projectileSpeed: number;
+  /** Maximum travel distance before projectile expires in meters. */
+  readonly maxRange: number;
+  /** Damage dealt on hit (not used for decoys). */
+  readonly damagePerHit: number;
+  /** Radius of collision detection in meters. */
+  readonly collisionRadius: number;
+  /** Whether the weapon can be turreted (rotated independently of ship heading). */
+  readonly turreted: boolean;
+}
+
+/**
+ * Weapon loadout for a given ship class.
+ * Index corresponds to weapon index used in fire() API.
+ */
+export interface WeaponLoadout {
+  readonly weapons: ReadonlyArray<WeaponStats>;
+}
 
 export interface ShipClassStats {
   readonly maxHealth: number;
@@ -21,6 +53,8 @@ export interface ShipClassStats {
   readonly maxAngularSpeed: number;
   /** Delta-v budget in m/s; null for crewed ships whose fuel is unlimited. */
   readonly maxFuel: number | null;
+  /** Weapons for this ship class. */
+  readonly weapons: ReadonlyArray<WeaponStats>;
 }
 
 /** Public, read-only snapshot of a single ship included in every tick snapshot. */
@@ -39,12 +73,36 @@ export interface ShipSnapshot {
   readonly fuel: number;
 }
 
+/**
+ * Snapshot of an active projectile in the world.
+ * Used for rendering and state inspection.
+ */
+export interface ProjectileSnapshot {
+  readonly id: number;
+  readonly team: number;
+  readonly firedBy: number; // ship id
+  readonly weaponType: WeaponType;
+  readonly position: Vec3;
+  readonly velocity: Vec3;
+  readonly traveledDistance: number;
+}
+
+/** Combat event logged during this tick (hit, miss, kill, etc.) */
+export interface CombatEvent {
+  readonly tick: number;
+  readonly type: "fire" | "hit" | "kill";
+  readonly attackerId: number;
+  readonly targetId?: number;
+  readonly weaponIndex?: number;
+}
+
 /** State snapshot emitted by the simulation every tick. */
 export interface SimulationStateSnapshot {
   readonly tick: number;
   readonly seed: number;
   readonly ships: ReadonlyArray<ShipSnapshot>;
-  readonly projectileCount: number;
+  readonly projectiles: ReadonlyArray<ProjectileSnapshot>;
+  readonly combatEvents: ReadonlyArray<CombatEvent>;
 }
 
 /**
@@ -85,6 +143,12 @@ export interface ShipCommandsApi {
   turn(speed: number): void;
   /** Apply angular acceleration in rad/s². Clamped to max angular acceleration. */
   torque(acceleration: number): void;
+
+  // --- Combat ---
+  /** Fire weapon at the given index (0-based). Only fires if projectile is not loaded. */
+  fire(weaponIndex: number): void;
+  /** Query ticks remaining until a weapon is ready to fire. 0 means ready. */
+  reloadTicks(weaponIndex: number): number;
 }
 
 /** Invoked once per live ship per simulation tick. May issue control commands via the api. */

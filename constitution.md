@@ -21,7 +21,7 @@ Iteratively improve strategies through programming.
 This project prioritizes accessibility, extensibility, and developer friendliness, while maintaining gameplay fidelity.
 
 2. Core Design Principles
-2.1 Web-Native First
+   2.1 Web-Native First
 
 The entire system must run in a browser using:
 
@@ -78,12 +78,11 @@ UI must be treated as a layer, not tightly coupled to the simulation.
 The project is divided into five major subsystems.
 
 /src
-  /engine
-  /combat
-  /simulation
-  /ui
-  /editor
-4. Simulation Engine
+/engine
+/combat
+/simulation
+/ui
+/editor 4. Simulation Engine
 
 The simulation engine governs the game loop.
 
@@ -107,13 +106,12 @@ Maintain world state
 
 Simulation Loop
 while (simulationRunning) {
-    processInputs()
-    executeShipCode()
-    updatePhysics()
-    resolveCombat()
-    updateGameState()
-}
-5. Movement System
+processInputs()
+executeShipCode()
+updatePhysics()
+resolveCombat()
+updateGameState()
+} 5. Movement System
 
 Ships must support programmable movement using vector-based controls.
 
@@ -198,7 +196,7 @@ access only approved APIs
 Example:
 
 function update(ship) {
-    const enemies = ship.scanEnemies()
+const enemies = ship.scanEnemies()
 
     if (enemies.length > 0) {
         ship.lockTarget(enemies[0])
@@ -206,6 +204,7 @@ function update(ship) {
     } else {
         ship.thrust(1)
     }
+
 }
 Sandbox Requirements
 
@@ -239,14 +238,16 @@ Monaco Editor
 
 CodeMirror
 
-Editor Layout
------------------------------------------
-| Code Editor | Simulation Window       |
-|             |                         |
-|             |                         |
------------------------------------------
-| Logs | Controls | Battle Status       |
------------------------------------------
+## Editor Layout
+
+| Code Editor | Simulation Window |
+| | |
+| | |
+
+---
+
+## | Logs | Controls | Battle Status |
+
 9. Visualization System
 
 Battles must be visualized in real time.
@@ -324,8 +325,7 @@ Example debug tools:
 pause()
 stepFrame()
 showHitboxes()
-showVectors()
-12. Extensibility
+showVectors() 12. Extensibility
 
 The system must allow future features including:
 
@@ -360,7 +360,7 @@ Responsiveness
 Visual fidelity
 
 14. Development Guidelines
-Code Quality
+    Code Quality
 
 All code must:
 
@@ -439,30 +439,29 @@ Extensibility
 
 If design decisions conflict, simplicity and clarity take priority.
 
-
 Oort.rs API reference:
-
 
 Oort expects your code to have a Ship type with a tick method. Each tutorial provides some starter code which includes this:
 
-use oort_api::prelude::*;
+use oort_api::prelude::\*;
 
 pub struct Ship {}
 
 impl Ship {
-    pub fn new() -> Ship {
-        Ship {}
-    }
+pub fn new() -> Ship {
+Ship {}
+}
 
     pub fn tick(&mut self) {
     }
+
 }
 
 The game will call your new function when a ship is created and then call tick 60 times per second during the simulation.
 
 struct Ship is useful for storing any state that needs to persist between ticks. enum Ship works too and can be helpful when this state differs between ship classes.
 
-The statement use oort_api::prelude::* imports all the APIs so that you can use them simply as e.g. position(). See the prelude module documentation for the details on everything this imports. The important APIs are covered below.
+The statement use oort_api::prelude::\* imports all the APIs so that you can use them simply as e.g. position(). See the prelude module documentation for the details on everything this imports. The important APIs are covered below.
 Subsystems
 
 All actions performed by a ship (such as firing weapons or scanning the radar) occur between ticks. In particular, setting the radar heading or the radio channel will affect the scan results or messages received on the next tick.
@@ -653,39 +652,39 @@ Ship Classes
 Modules
 
 prelude
-    All APIs.
+All APIs.
 
 Macros
 
 debug
-    Adds text to be displayed when the ship is selected by clicking on it.
+Adds text to be displayed when the ship is selected by clicking on it.
 draw_text
-    Adds text to be drawn in the world, visible in debug mode.
+Adds text to be drawn in the world, visible in debug mode.
 
 Structs
 
 ActiveAbilities
-    List of active abilities for an entity.
+List of active abilities for an entity.
 ClassStats
-    Stats for a class of ship
+Stats for a class of ship
 
 Enums
 
 Ability
-    Special abilities available to different ship classes.
+Special abilities available to different ship classes.
 Class
-    Identifiers for each class of ship.
+Identifiers for each class of ship.
 EcmMode
-    Electronic Counter Measures (ECM) modes.
+Electronic Counter Measures (ECM) modes.
 SystemState
 
 Constants
 
 ABILITIES
-    Array of all ability types.
+Array of all ability types.
 MAX_ENVIRONMENT_SIZE
 
 Type Aliases
 
 Message
-    Message sent and received on the radio.
+Message sent and received on the radio.

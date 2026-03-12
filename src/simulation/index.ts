@@ -8,10 +8,20 @@ import type {
   SimulationStateSnapshot,
   SimulationSystem,
   WorldConfig,
+  CombatEvent,
+  WeaponType
 } from "../contracts";
-import { vec3, vec3Add, vec3AngleXY, vec3Length, vec3RotateXY, vec3Scale, vec3Sub, VEC3_ZERO } from "../math";
+import {
+  vec3,
+  vec3Add,
+  vec3AngleXY,
+  vec3Length,
+  vec3RotateXY,
+  vec3Scale,
+  vec3Sub,
+  VEC3_ZERO
+} from "../math";
 import type { Vec3 } from "../math";
-
 
 export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
   Fighter: {
@@ -22,6 +32,26 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxAngularAccel: 2 * Math.PI,
     maxAngularSpeed: 2 * Math.PI,
     maxFuel: null,
+    weapons: [
+      {
+        type: "Gun",
+        reloadTime: 0.066,
+        projectileSpeed: 1000,
+        maxRange: 5000,
+        damagePerHit: 10,
+        collisionRadius: 5,
+        turreted: false
+      },
+      {
+        type: "Missile",
+        reloadTime: 5,
+        projectileSpeed: 300,
+        maxRange: 10000,
+        damagePerHit: 50,
+        collisionRadius: 15,
+        turreted: false
+      }
+    ]
   },
   Frigate: {
     maxHealth: 10_000,
@@ -31,6 +61,44 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxAngularAccel: Math.PI / 4,
     maxAngularSpeed: Math.PI / 2,
     maxFuel: null,
+    weapons: [
+      {
+        type: "Gun",
+        reloadTime: 2,
+        projectileSpeed: 4000,
+        maxRange: 8000,
+        damagePerHit: 30,
+        collisionRadius: 5,
+        turreted: false
+      },
+      {
+        type: "Gun",
+        reloadTime: 0.066,
+        projectileSpeed: 1000,
+        maxRange: 5000,
+        damagePerHit: 10,
+        collisionRadius: 5,
+        turreted: true
+      },
+      {
+        type: "Gun",
+        reloadTime: 0.066,
+        projectileSpeed: 1000,
+        maxRange: 5000,
+        damagePerHit: 10,
+        collisionRadius: 5,
+        turreted: true
+      },
+      {
+        type: "Missile",
+        reloadTime: 2,
+        projectileSpeed: 300,
+        maxRange: 10000,
+        damagePerHit: 50,
+        collisionRadius: 15,
+        turreted: false
+      }
+    ]
   },
   Cruiser: {
     maxHealth: 20_000,
@@ -40,6 +108,44 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxAngularAccel: Math.PI / 8,
     maxAngularSpeed: Math.PI / 4,
     maxFuel: null,
+    weapons: [
+      {
+        type: "Gun",
+        reloadTime: 5,
+        projectileSpeed: 2000,
+        maxRange: 6000,
+        damagePerHit: 20,
+        collisionRadius: 5,
+        turreted: true
+      },
+      {
+        type: "Missile",
+        reloadTime: 1.2,
+        projectileSpeed: 300,
+        maxRange: 10000,
+        damagePerHit: 50,
+        collisionRadius: 15,
+        turreted: false
+      },
+      {
+        type: "Missile",
+        reloadTime: 1.2,
+        projectileSpeed: 300,
+        maxRange: 10000,
+        damagePerHit: 50,
+        collisionRadius: 15,
+        turreted: false
+      },
+      {
+        type: "Torpedo",
+        reloadTime: 3,
+        projectileSpeed: 200,
+        maxRange: 15000,
+        damagePerHit: 100,
+        collisionRadius: 20,
+        turreted: false
+      }
+    ]
   },
   Missile: {
     maxHealth: 20,
@@ -49,6 +155,7 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxAngularAccel: 4 * Math.PI,
     maxAngularSpeed: 4 * Math.PI,
     maxFuel: 2_000,
+    weapons: []
   },
   Torpedo: {
     maxHealth: 100,
@@ -58,14 +165,15 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
     maxAngularAccel: 2 * Math.PI,
     maxAngularSpeed: 2 * Math.PI,
     maxFuel: 3_000,
-  },
+    weapons: []
+  }
 };
-
 
 interface PendingCommands {
   acceleration: Vec3 | null; // ship-local space
-  turn: number | null;       // target angular velocity (rad/s)
-  torque: number | null;     // angular acceleration (rad/s²)
+  turn: number | null; // target angular velocity (rad/s)
+  torque: number | null; // angular acceleration (rad/s²)
+  fireCommands: number[]; // indices of weapons to fire this tick
 }
 
 interface ShipEntity {
@@ -80,6 +188,21 @@ interface ShipEntity {
   /** Remaining delta-v in m/s. Infinity for crewed ships. */
   fuel: number;
   pending: PendingCommands;
+  /** Cooldown timer in seconds for each weapon. 0 means ready to fire. */
+  weaponCooldowns: number[];
+}
+
+interface Projectile {
+  id: number;
+  team: number;
+  firedBy: number; // ship id
+  weaponType: WeaponType;
+  position: Vec3;
+  velocity: Vec3;
+  traveledDistance: number;
+  maxRange: number;
+  damagePerHit: number;
+  collisionRadius: number;
 }
 
 interface WorldState {
@@ -87,7 +210,9 @@ interface WorldState {
   seed: number;
   rngState: number;
   ships: ShipEntity[];
-  projectileCount: number;
+  projectiles: Projectile[];
+  nextProjectileId: number;
+  combatEvents: CombatEvent[];
   worldSize: number;
 }
 
@@ -108,8 +233,8 @@ const DEFAULT_CONFIG: WorldConfig = {
   worldSize: 20_000,
   ships: [
     { team: 0, class: "Fighter", position: vec3(-500, 0, 0), heading: 0 },
-    { team: 1, class: "Fighter", position: vec3(500, 0, 0), heading: Math.PI },
-  ],
+    { team: 1, class: "Fighter", position: vec3(500, 0, 0), heading: Math.PI }
+  ]
 };
 
 // ---------------------------------------------------------------------------
@@ -133,7 +258,7 @@ function pendingAccelerationOrZero(entity: ShipEntity): Vec3 {
 }
 
 function freshPending(): PendingCommands {
-  return { acceleration: null, turn: null, torque: null };
+  return { acceleration: null, turn: null, torque: null, fireCommands: [] };
 }
 
 function makeShipEntity(id: number, cfg: ShipConfig): ShipEntity {
@@ -149,6 +274,7 @@ function makeShipEntity(id: number, cfg: ShipConfig): ShipEntity {
     health: stats.maxHealth,
     fuel: stats.maxFuel ?? Infinity,
     pending: freshPending(),
+    weaponCooldowns: stats.weapons.map(() => 0)
   };
 }
 
@@ -162,7 +288,7 @@ function snapshotShip(entity: ShipEntity): ShipSnapshot {
     heading: entity.heading,
     angularVelocity: entity.angularVelocity,
     health: entity.health,
-    fuel: entity.fuel,
+    fuel: entity.fuel
   };
 }
 
@@ -171,7 +297,16 @@ function buildSnapshot(world: WorldState): SimulationStateSnapshot {
     tick: world.tick,
     seed: world.seed,
     ships: world.ships.map(snapshotShip),
-    projectileCount: world.projectileCount,
+    projectiles: world.projectiles.map((p) => ({
+      id: p.id,
+      team: p.team,
+      firedBy: p.firedBy,
+      weaponType: p.weaponType,
+      position: p.position,
+      velocity: p.velocity,
+      traveledDistance: p.traveledDistance
+    })),
+    combatEvents: world.combatEvents
   };
 }
 
@@ -183,7 +318,11 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
   const stats = SHIP_CLASS_STATS[entity.class];
   const setHeadingImpl = (targetHeading: number): void => {
     const headingError = angleDiff(targetHeading, entity.heading);
-    const targetAngularVelocity = clamp(headingError * 4, -stats.maxAngularSpeed, stats.maxAngularSpeed);
+    const targetAngularVelocity = clamp(
+      headingError * 4,
+      -stats.maxAngularSpeed,
+      stats.maxAngularSpeed
+    );
     entity.pending.turn = targetAngularVelocity;
   };
 
@@ -255,18 +394,23 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
       const localVelocity = vec3RotateXY(entity.velocity, -entity.heading);
       const headingError = angleDiff(targetHeading, entity.heading);
       const alignment = Math.max(0, Math.cos(headingError));
-      const desiredForwardSpeed = Math.min(Math.sqrt(2 * stats.maxBackwardAccel * distance), 250) * alignment;
+      const desiredForwardSpeed =
+        Math.min(Math.sqrt(2 * stats.maxBackwardAccel * distance), 250) * alignment;
 
       let forwardAccel = clamp(
         (desiredForwardSpeed - localVelocity.x) * 2,
         -stats.maxBackwardAccel,
-        stats.maxForwardAccel,
+        stats.maxForwardAccel
       );
       if (alignment < 0.2) {
         forwardAccel = clamp(-localVelocity.x * 2, -stats.maxBackwardAccel, stats.maxForwardAccel);
       }
 
-      const lateralAccel = clamp(-localVelocity.y * 2, -stats.maxLateralAccel, stats.maxLateralAccel);
+      const lateralAccel = clamp(
+        -localVelocity.y * 2,
+        -stats.maxLateralAccel,
+        stats.maxLateralAccel
+      );
       entity.pending.acceleration = vec3(forwardAccel, lateralAccel, 0);
     },
     accelerate(acceleration: Vec3): void {
@@ -278,6 +422,20 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
     torque(acceleration: number): void {
       entity.pending.torque = acceleration;
     },
+    fire(weaponIndex: number): void {
+      if (weaponIndex >= 0 && weaponIndex < stats.weapons.length) {
+        if (entity.pending.fireCommands.indexOf(weaponIndex) === -1) {
+          entity.pending.fireCommands.push(weaponIndex);
+        }
+      }
+    },
+    reloadTicks(weaponIndex: number): number {
+      if (weaponIndex < 0 || weaponIndex >= stats.weapons.length) {
+        return 0;
+      }
+      const cooldownSecs = entity.weaponCooldowns[weaponIndex] ?? 0;
+      return Math.ceil(cooldownSecs / (1 / 60)); // Convert seconds to ticks (60 ticks per second).
+    }
   };
 }
 
@@ -298,13 +456,21 @@ function physicsUpdate(entity: ShipEntity, dt: number): void {
 
   // --- Angular velocity via turn command (target velocity, approached at max angular accel) ---
   if (pending.turn !== null) {
-    const targetAngularVelocity = clamp(pending.turn, -stats.maxAngularSpeed, stats.maxAngularSpeed);
+    const targetAngularVelocity = clamp(
+      pending.turn,
+      -stats.maxAngularSpeed,
+      stats.maxAngularSpeed
+    );
     const maxDelta = stats.maxAngularAccel * dt;
     const diff = targetAngularVelocity - entity.angularVelocity;
     entity.angularVelocity += clamp(diff, -maxDelta, maxDelta);
   }
 
-  entity.angularVelocity = clamp(entity.angularVelocity, -stats.maxAngularSpeed, stats.maxAngularSpeed);
+  entity.angularVelocity = clamp(
+    entity.angularVelocity,
+    -stats.maxAngularSpeed,
+    stats.maxAngularSpeed
+  );
 
   // --- Heading ---
   entity.heading = normalizeAngle(entity.heading + entity.angularVelocity * dt);
@@ -352,8 +518,10 @@ export function createSimulationSystem(): SimulationSystem {
     seed: 1,
     rngState: 1,
     ships: [],
-    projectileCount: 0,
-    worldSize: 20_000,
+    projectiles: [],
+    nextProjectileId: 0,
+    combatEvents: [],
+    worldSize: 20_000
   };
 
   let shipCodeHook: ShipCodeHook | null = null;
@@ -365,8 +533,10 @@ export function createSimulationSystem(): SimulationSystem {
         seed,
         rngState: seed >>> 0,
         ships: config.ships.map((cfg, idx) => makeShipEntity(idx, cfg)),
-        projectileCount: 0,
-        worldSize: config.worldSize ?? 20_000,
+        projectiles: [],
+        nextProjectileId: 0,
+        combatEvents: [],
+        worldSize: config.worldSize ?? 20_000
       };
     },
 
@@ -375,7 +545,17 @@ export function createSimulationSystem(): SimulationSystem {
     },
 
     step(deltaSeconds: number): SimulationStateSnapshot {
-      // 1. Execute ship code — hook buffers acceleration/turn/torque commands.
+      // Clear combat events from previous tick.
+      world.combatEvents = [];
+
+      // 1. Decay weapon cooldowns.
+      for (const ship of world.ships) {
+        for (let i = 0; i < ship.weaponCooldowns.length; i++) {
+          ship.weaponCooldowns[i] = Math.max(0, ship.weaponCooldowns[i] - deltaSeconds);
+        }
+      }
+
+      // 2. Execute ship code — hook buffers acceleration/turn/torque commands and fire requests.
       if (shipCodeHook !== null) {
         for (const ship of world.ships) {
           if (ship.health > 0) {
@@ -385,14 +565,94 @@ export function createSimulationSystem(): SimulationSystem {
         }
       }
 
-      // 2. Physics update — apply buffered commands and integrate motion.
+      // 3. Process fire commands and create projectiles.
+      for (const ship of world.ships) {
+        if (ship.health > 0) {
+          const stats = SHIP_CLASS_STATS[ship.class];
+          for (const weaponIdx of ship.pending.fireCommands) {
+            if (weaponIdx < stats.weapons.length && ship.weaponCooldowns[weaponIdx] <= 0) {
+              const weapon = stats.weapons[weaponIdx];
+              const projectile: Projectile = {
+                id: world.nextProjectileId++,
+                team: ship.team,
+                firedBy: ship.id,
+                weaponType: weapon.type,
+                position: vec3(ship.position.x, ship.position.y, ship.position.z),
+                velocity: vec3RotateXY(vec3(weapon.projectileSpeed, 0, 0), ship.heading),
+                traveledDistance: 0,
+                maxRange: weapon.maxRange,
+                damagePerHit: weapon.damagePerHit,
+                collisionRadius: weapon.collisionRadius
+              };
+              world.projectiles.push(projectile);
+              ship.weaponCooldowns[weaponIdx] = weapon.reloadTime;
+              world.combatEvents.push({
+                tick: world.tick,
+                type: "fire",
+                attackerId: ship.id,
+                weaponIndex: weaponIdx
+              });
+            }
+          }
+        }
+      }
+
+      // 4. Physics update — apply buffered commands and integrate motion for ships.
       for (const ship of world.ships) {
         if (ship.health > 0) {
           physicsUpdate(ship, deltaSeconds);
         }
       }
 
-      // 3. Advance deterministic RNG and tick counter.
+      // 5. Update projectiles and check for collisions.
+      const projectilesToRemove: number[] = [];
+      for (const projectile of world.projectiles) {
+        projectile.position = vec3Add(
+          projectile.position,
+          vec3Scale(projectile.velocity, deltaSeconds)
+        );
+        projectile.traveledDistance += vec3Length(vec3Scale(projectile.velocity, deltaSeconds));
+
+        if (projectile.traveledDistance >= projectile.maxRange) {
+          projectilesToRemove.push(projectile.id);
+          continue;
+        }
+
+        // Check collision with enemy ships.
+        for (const ship of world.ships) {
+          if (ship.health > 0 && ship.team !== projectile.team) {
+            const dist = Math.hypot(
+              ship.position.x - projectile.position.x,
+              ship.position.y - projectile.position.y
+            );
+            if (dist <= projectile.collisionRadius + 20) {
+              // Rough collision radius for ships, TODO: make more sophisticated.
+              ship.health = Math.max(0, ship.health - projectile.damagePerHit);
+              projectilesToRemove.push(projectile.id);
+              world.combatEvents.push({
+                tick: world.tick,
+                type: "hit",
+                attackerId: projectile.firedBy,
+                targetId: ship.id
+              });
+              if (ship.health <= 0) {
+                world.combatEvents.push({
+                  tick: world.tick,
+                  type: "kill",
+                  attackerId: projectile.firedBy,
+                  targetId: ship.id
+                });
+              }
+              break;
+            }
+          }
+        }
+      }
+
+      // Remove expired projectiles.
+      world.projectiles = world.projectiles.filter((p) => projectilesToRemove.indexOf(p.id) === -1);
+
+      // 6. Advance deterministic RNG and tick counter.
       world.rngState = lcgNext(world.rngState);
       world.tick += 1;
 
@@ -401,6 +661,6 @@ export function createSimulationSystem(): SimulationSystem {
 
     getState(): SimulationStateSnapshot {
       return buildSnapshot(world);
-    },
+    }
   };
 }

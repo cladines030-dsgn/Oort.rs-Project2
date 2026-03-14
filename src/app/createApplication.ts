@@ -1,6 +1,7 @@
 import { createCombatSystem } from "../combat";
 import { createEditorSystem } from "../editor";
 import { createEngine } from "../engine";
+import { createShipSandboxSystem } from "../sandbox";
 import { createSimulationSystem } from "../simulation";
 import { createUiSystem } from "../ui";
 
@@ -13,6 +14,7 @@ export function createApplication(container: HTMLElement): Application {
   const simulation = createSimulationSystem();
   const combat = createCombatSystem();
   const editor = createEditorSystem();
+  const sandbox = createShipSandboxSystem();
   const ui = createUiSystem();
 
   ui.mount(container);
@@ -36,6 +38,7 @@ export function createApplication(container: HTMLElement): Application {
     simulation,
     combat,
     editor,
+    sandbox,
     ui,
     timestepSeconds: 1 / 60
   });

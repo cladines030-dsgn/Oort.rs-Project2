@@ -105,6 +105,17 @@ export interface SimulationStateSnapshot {
   readonly combatEvents: ReadonlyArray<CombatEvent>;
 }
 
+export type ShipScriptLogLevel = "log" | "warn" | "error";
+
+/** Structured log line emitted by sandboxed ship code. */
+export interface ShipScriptLogEntry {
+  readonly tick: number;
+  readonly shipId: number;
+  readonly team: number;
+  readonly level: ShipScriptLogLevel;
+  readonly message: string;
+}
+
 /**
  * API surface exposed to ship programs each simulation tick.
  * Mirrors the Oort API reference: status reads plus buffered control commands.
@@ -188,10 +199,20 @@ export interface EditorSystem {
   getProgramSource(): ShipProgramSource;
 }
 
+export interface ShipSandboxSystem {
+  /** Compile and activate the latest user program source. */
+  initialize(programSource: ShipProgramSource): void;
+  /** Execute user update(ship) for one ship in one simulation tick. */
+  execute(shipId: number, team: number, tick: number, api: ShipCommandsApi): void;
+  /** Return and clear buffered script logs since the previous flush. */
+  flushLogs(): ReadonlyArray<ShipScriptLogEntry>;
+}
+
 export interface UiSystem {
   mount(container: HTMLElement): void;
   updateStatus(message: string): void;
   render(state: SimulationStateSnapshot): void;
+  renderScriptLogs(entries: ReadonlyArray<ShipScriptLogEntry>): void;
 }
 
 export interface EngineSystem {
@@ -204,6 +225,7 @@ export interface EngineDependencies {
   simulation: SimulationSystem;
   combat: CombatSystem;
   editor: EditorSystem;
+  sandbox: ShipSandboxSystem;
   ui: UiSystem;
   timestepSeconds: number;
 }

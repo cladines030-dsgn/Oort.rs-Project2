@@ -2,6 +2,7 @@ import { createEngine, type EngineScheduler } from "./index";
 import type {
   CombatSystem,
   EditorSystem,
+  ShipSandboxSystem,
   SimulationStateSnapshot,
   SimulationSystem,
   UiSystem
@@ -43,7 +44,8 @@ function createSimulationMock(): { simulation: SimulationSystem; getStepCount: (
     tick: 0,
     seed: 0,
     ships: [],
-    projectileCount: 0
+    projectiles: [],
+    combatEvents: []
   };
 
   return {
@@ -102,6 +104,23 @@ function createUiMock(): UiSystem {
     },
     render(): void {
       // no-op
+    },
+    renderScriptLogs(): void {
+      // no-op
+    }
+  };
+}
+
+function createSandboxMock(): ShipSandboxSystem {
+  return {
+    initialize(): void {
+      // no-op
+    },
+    execute(): void {
+      // no-op
+    },
+    flushLogs() {
+      return [];
     }
   };
 }
@@ -116,6 +135,7 @@ describe("engine fixed timestep loop", () => {
         simulation: simulationMock.simulation,
         combat: createCombatMock(),
         editor: createEditorMock(),
+        sandbox: createSandboxMock(),
         ui: createUiMock(),
         timestepSeconds: 1 / 60
       },

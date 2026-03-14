@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "acorn": "^8.14.1",
+    "acorn-walk": "^8.3.4",
+    "magic-string": "^0.30.17"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

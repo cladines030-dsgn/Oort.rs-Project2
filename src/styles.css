@@ -35,6 +35,17 @@ body {
   color: #e2e8f0;
   border-radius: 0.5rem;
   padding: 0.75rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.script-logs {
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  max-height: 14rem;
+  overflow-y: auto;
 }
 
 .controls {

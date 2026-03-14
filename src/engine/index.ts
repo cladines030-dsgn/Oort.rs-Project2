@@ -49,6 +49,7 @@ export function createEngine(
     }
 
     dependencies.ui.render(latestState ?? dependencies.simulation.getState());
+    dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs());
     rafId = scheduler.requestAnimationFrame(frame);
   };
 
@@ -66,8 +67,15 @@ export function createEngine(
       dependencies.combat.initialize();
       dependencies.editor.initialize();
 
+      const source = dependencies.editor.getProgramSource();
+      dependencies.sandbox.initialize(source);
+      dependencies.simulation.registerShipCodeHook((shipId, team, api) => {
+        dependencies.sandbox.execute(shipId, team, api.currentTick(), api);
+      });
+
       dependencies.ui.updateStatus("Simulation running");
       dependencies.ui.render(dependencies.simulation.getState());
+      dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs());
       rafId = scheduler.requestAnimationFrame(frame);
     },
     stop(): void {

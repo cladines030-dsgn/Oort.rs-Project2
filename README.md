@@ -46,3 +46,15 @@ npm run build
 
 - This baseline intentionally keeps combat/editor internals minimal while locking in stable interfaces.
 - The fixed-step engine loop and deterministic simulation seed handling are in place as a starting point for Checkpoint 2.
+
+
+# Oort.rs Game Interface
+
+This is a code bundle for Oort.rs Game Interface. The original project is available at https://www.figma.com/design/O0MFFMHHTfaERiuyunAZ5P/Oort.rs-Game-Interface.
+
+## Running the code
+
+Run `npm i` to install the dependencies.
+
+Run `npm run dev` to start the development server.
+  

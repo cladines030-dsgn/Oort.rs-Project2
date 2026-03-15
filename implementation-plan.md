@@ -43,7 +43,7 @@ Goal:
 - Implement programmable ship movement with realistic constraints.
 
 Deliverables:
-- Add movement APIs: `thrust`, `turn`, `setHeading`, `moveTo`, `velocity`, `position`.
+- Add movement APIs
 - Implement inertial movement, acceleration limits, rotational speed limits.
 - Add navigation helpers for waypoint and heading-based movement.
 - Add unit tests for movement physics and edge cases.
@@ -59,7 +59,7 @@ Goal:
 - Deliver autonomous combat with collision and damage resolution.
 
 Deliverables:
-- Implement combat APIs: `fire`, `fireAt`, `lockTarget`, `scanEnemies`, `health`.
+- Implement combat APIs
 - Add projectile lifecycle with travel time and collision detection.
 - Implement cooldowns, hit processing, and damage model.
 - Provide first weapon types (projectile baseline, optional missile/energy stubs).

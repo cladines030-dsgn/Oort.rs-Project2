@@ -3,7 +3,7 @@ export function SpaceBackground() {
     <>
       {/* Space background with planets */}
       <div className="space-bg" />
-      
+
       {/* Starfield */}
       <div className="starfield" />
     </>

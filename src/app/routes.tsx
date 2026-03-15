@@ -6,22 +6,22 @@ import { Game } from "./pages/Game";
 export const router = createBrowserRouter([
   {
     path: "/",
-    Component: Home,
+    Component: Home
   },
   {
     path: "/challenges",
-    Component: Challenges,
+    Component: Challenges
   },
   {
     path: "/game",
-    Component: Game,
+    Component: Game
   },
   {
     path: "/tutorial",
-    Component: Game,
+    Component: Game
   },
   {
     path: "/multiplayer",
-    Component: Game,
-  },
+    Component: Game
+  }
 ]);

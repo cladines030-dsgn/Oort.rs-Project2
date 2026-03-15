@@ -12,14 +12,14 @@ interface PageCardProps {
 
 export function PageCard({ title, to, children, onClick, icon }: PageCardProps) {
   const cardContent = (
-    <motion.div 
+    <motion.div
       className="bg-card border border-primary/40 p-8 hover:border-primary transition-all cursor-pointer h-full relative group overflow-hidden"
-      whileHover={{ 
-        boxShadow: '0 0 20px rgba(0, 207, 255, 0.3), inset 0 0 20px rgba(0, 207, 255, 0.1)'
+      whileHover={{
+        boxShadow: "0 0 20px rgba(0, 207, 255, 0.3), inset 0 0 20px rgba(0, 207, 255, 0.1)"
       }}
     >
       {icon && (
-        <motion.div 
+        <motion.div
           className="mb-4 text-primary"
           whileHover={{ scale: 1.1 }}
           transition={{ duration: 0.2 }}
@@ -27,13 +27,11 @@ export function PageCard({ title, to, children, onClick, icon }: PageCardProps) 
           {icon}
         </motion.div>
       )}
-      
+
       <h3 className="mb-4 uppercase tracking-wider text-primary group-hover:text-white transition-colors header-font">
         {title}
       </h3>
-      <div className="code-font text-sm">
-        {children}
-      </div>
+      <div className="code-font text-sm">{children}</div>
     </motion.div>
   );
 

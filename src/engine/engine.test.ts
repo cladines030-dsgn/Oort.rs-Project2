@@ -2,8 +2,10 @@ import { createEngine, type EngineScheduler } from "./index";
 import type {
   CombatSystem,
   EditorSystem,
+  ShipSandboxSystem,
   SimulationStateSnapshot,
   SimulationSystem,
+  UiRenderFrame,
   UiSystem
 } from "../contracts";
 
@@ -41,9 +43,11 @@ function createSimulationMock(): { simulation: SimulationSystem; getStepCount: (
   let stepCount = 0;
   let state: SimulationStateSnapshot = {
     tick: 0,
-    ships: 2,
-    projectiles: 0,
-    seed: 0
+    seed: 0,
+    worldSize: 20_000,
+    ships: [],
+    projectiles: [],
+    combatEvents: []
   };
 
   return {
@@ -59,6 +63,9 @@ function createSimulationMock(): { simulation: SimulationSystem; getStepCount: (
       },
       getState(): SimulationStateSnapshot {
         return state;
+      },
+      registerShipCodeHook(): void {
+        // no-op
       }
     },
     getStepCount(): number {
@@ -79,12 +86,21 @@ function createCombatMock(): CombatSystem {
 }
 
 function createEditorMock(): EditorSystem {
+  let source = "function update() {}";
+
   return {
     initialize(): void {
       // no-op
     },
     getProgramSource(): string {
-      return "function update() {}";
+      return source;
+    },
+    setProgramSource(next: string): void {
+      source = next;
+    },
+    resetProgramSource(): string {
+      source = "function update() {}";
+      return source;
     }
   };
 }
@@ -99,6 +115,75 @@ function createUiMock(): UiSystem {
     },
     render(): void {
       // no-op
+    },
+    renderScriptLogs(): void {
+      // no-op
+    },
+    getProgramSource(): string {
+      return "function update() {}";
+    },
+    setProgramSource(): void {
+      // no-op
+    },
+    onRunRequested(): void {
+      // no-op
+    },
+    onStopRequested(): void {
+      // no-op
+    },
+    onResetRequested(): void {
+      // no-op
+    }
+  };
+}
+
+function createUiRecorderMock(): { ui: UiSystem; frames: UiRenderFrame[] } {
+  const frames: UiRenderFrame[] = [];
+
+  return {
+    ui: {
+      mount(): void {
+        // no-op
+      },
+      updateStatus(): void {
+        // no-op
+      },
+      render(frame: UiRenderFrame): void {
+        frames.push(frame);
+      },
+      renderScriptLogs(): void {
+        // no-op
+      },
+      getProgramSource(): string {
+        return "function update() {}";
+      },
+      setProgramSource(): void {
+        // no-op
+      },
+      onRunRequested(): void {
+        // no-op
+      },
+      onStopRequested(): void {
+        // no-op
+      },
+      onResetRequested(): void {
+        // no-op
+      }
+    },
+    frames
+  };
+}
+
+function createSandboxMock(): ShipSandboxSystem {
+  return {
+    initialize(): void {
+      // no-op
+    },
+    execute(): void {
+      // no-op
+    },
+    flushLogs() {
+      return [];
     }
   };
 }
@@ -113,6 +198,7 @@ describe("engine fixed timestep loop", () => {
         simulation: simulationMock.simulation,
         combat: createCombatMock(),
         editor: createEditorMock(),
+        sandbox: createSandboxMock(),
         ui: createUiMock(),
         timestepSeconds: 1 / 60
       },
@@ -125,5 +211,41 @@ describe("engine fixed timestep loop", () => {
     scheduler.advance(16.6667);
 
     expect(simulationMock.getStepCount()).toBe(4);
+  });
+
+  test("preserves previous simulation state between render-only frames", () => {
+    const scheduler = new FakeScheduler();
+    const simulationMock = createSimulationMock();
+    const uiRecorder = createUiRecorderMock();
+
+    const engine = createEngine(
+      {
+        simulation: simulationMock.simulation,
+        combat: createCombatMock(),
+        editor: createEditorMock(),
+        sandbox: createSandboxMock(),
+        ui: uiRecorder.ui,
+        timestepSeconds: 1 / 60
+      },
+      scheduler
+    );
+
+    engine.start(7);
+
+    scheduler.advance(17);
+    const firstInterpolatedFrame = uiRecorder.frames.at(-1);
+    expect(firstInterpolatedFrame).toBeDefined();
+    expect(firstInterpolatedFrame?.state.tick).toBe(1);
+    expect(firstInterpolatedFrame?.previousState.tick).toBe(0);
+
+    scheduler.advance(8);
+    const secondInterpolatedFrame = uiRecorder.frames.at(-1);
+    expect(secondInterpolatedFrame).toBeDefined();
+    expect(secondInterpolatedFrame?.state.tick).toBe(1);
+    expect(secondInterpolatedFrame?.previousState.tick).toBe(0);
+    expect(secondInterpolatedFrame?.interpolationAlpha ?? 0).toBeGreaterThan(
+      firstInterpolatedFrame?.interpolationAlpha ?? 0
+    );
+    expect(simulationMock.getStepCount()).toBe(1);
   });
 });

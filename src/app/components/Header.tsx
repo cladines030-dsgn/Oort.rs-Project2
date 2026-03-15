@@ -1,4 +1,3 @@
-import { Terminal } from "lucide-react";
 import { Link } from "react-router";
 
 export function Header() {

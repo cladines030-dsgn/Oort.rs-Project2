@@ -3,7 +3,7 @@ import { GridContainer } from "../components/GridContainer";
 import { PageCard } from "../components/PageCard";
 import { HeroPanel } from "../components/HeroPanel";
 import { SpaceBackground } from "../components/SpaceBackground";
-import { ChevronDown, Rocket, Target, Users } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
 

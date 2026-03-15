@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "../components/Header";
 import { SpaceBackground } from "../components/SpaceBackground";
-import { Play, RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router";
 import { motion } from "motion/react";
 

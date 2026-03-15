@@ -94,10 +94,7 @@ function prependGuardToBlock(ms: MagicString, block: { start: number }): void {
   ms.appendLeft(block.start + 1, "\n__budgetGuard();\n");
 }
 
-function wrapNonBlockLoopBody(
-  ms: MagicString,
-  body: { start: number; end: number }
-): void {
+function wrapNonBlockLoopBody(ms: MagicString, body: { start: number; end: number }): void {
   ms.prependLeft(body.start, "{ __budgetGuard(); ");
   ms.appendRight(body.end, " }");
 }

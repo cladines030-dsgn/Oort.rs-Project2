@@ -69,7 +69,10 @@ function lerpAngle(a: number, b: number, t: number): number {
   return a + delta * t;
 }
 
-function ensureCanvasSize(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D): { width: number; height: number } {
+function ensureCanvasSize(
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D
+): { width: number; height: number } {
   const dpr = window.devicePixelRatio || 1;
   const width = Math.max(1, Math.floor(canvas.clientWidth));
   const height = Math.max(1, Math.floor(canvas.clientHeight));
@@ -468,19 +471,19 @@ export function createUiSystem(): UiSystem {
       hud.className = "battle-hud";
 
       const tickLine = document.createElement("p");
-      tickLine.innerHTML = "Tick: <span data-role=\"tick\">0</span>";
+      tickLine.innerHTML = 'Tick: <span data-role="tick">0</span>';
       tickValueEl = tickLine.querySelector("span");
 
       const shipLine = document.createElement("p");
-      shipLine.innerHTML = "Alive ships: <span data-role=\"ships\">0</span>";
+      shipLine.innerHTML = 'Alive ships: <span data-role="ships">0</span>';
       shipsValueEl = shipLine.querySelector("span");
 
       const projectileLine = document.createElement("p");
-      projectileLine.innerHTML = "Projectiles: <span data-role=\"projectiles\">0</span>";
+      projectileLine.innerHTML = 'Projectiles: <span data-role="projectiles">0</span>';
       projectilesValueEl = projectileLine.querySelector("span");
 
       const fpsLine = document.createElement("p");
-      fpsLine.innerHTML = "Render FPS: <span data-role=\"fps\">0.0</span>";
+      fpsLine.innerHTML = 'Render FPS: <span data-role="fps">0.0</span>';
       fpsValueEl = fpsLine.querySelector("span");
 
       hud.append(tickLine, shipLine, projectileLine, fpsLine);
@@ -507,7 +510,8 @@ export function createUiSystem(): UiSystem {
 
       const wasNearBottom = logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight < 40;
       const newLines = entries.map(
-        (entry) => `[tick ${entry.tick}] ship=${entry.shipId} team=${entry.team} ${entry.level}: ${entry.message}`
+        (entry) =>
+          `[tick ${entry.tick}] ship=${entry.shipId} team=${entry.team} ${entry.level}: ${entry.message}`
       );
       logLines.push(...newLines);
       if (logLines.length > MAX_LOG_LINES) {

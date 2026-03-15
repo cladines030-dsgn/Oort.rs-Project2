@@ -3,8 +3,7 @@
   color: #f8fafc;
   background:
     radial-gradient(1200px 800px at -10% -20%, rgba(14, 165, 233, 0.35), transparent),
-    radial-gradient(900px 600px at 110% 120%, rgba(239, 68, 68, 0.2), transparent),
-    #020617;
+    radial-gradient(900px 600px at 110% 120%, rgba(239, 68, 68, 0.2), transparent), #020617;
 }
 
 * {
@@ -154,7 +153,10 @@ button {
   cursor: pointer;
   font-family: inherit;
   font-weight: 600;
-  transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 button:hover {

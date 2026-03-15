@@ -18,21 +18,8 @@ export function createApplication(container: HTMLElement): Application {
   const ui = createUiSystem();
 
   ui.mount(container);
+  ui.setProgramSource(editor.getProgramSource());
   ui.updateStatus("Ready");
-
-  const controls = document.createElement("div");
-  controls.className = "controls";
-
-  const startBtn = document.createElement("button");
-  startBtn.type = "button";
-  startBtn.textContent = "Run";
-
-  const stopBtn = document.createElement("button");
-  stopBtn.type = "button";
-  stopBtn.textContent = "Stop";
-
-  controls.append(startBtn, stopBtn);
-  container.append(controls);
 
   const engine = createEngine({
     simulation,
@@ -43,16 +30,30 @@ export function createApplication(container: HTMLElement): Application {
     timestepSeconds: 1 / 60
   });
 
-  startBtn.addEventListener("click", () => {
-    engine.start(1234);
+  const DEFAULT_SEED = 1234;
+
+  ui.onRunRequested(() => {
+    editor.setProgramSource(ui.getProgramSource());
+    if (engine.isRunning()) {
+      engine.stop();
+    }
+    engine.start(DEFAULT_SEED);
   });
 
-  stopBtn.addEventListener("click", () => {
+  ui.onStopRequested(() => {
     engine.stop();
   });
 
+  ui.onResetRequested(() => {
+    engine.stop();
+    const resetProgram = editor.resetProgramSource();
+    ui.setProgramSource(resetProgram);
+    ui.updateStatus("Ready");
+  });
+
   return {
-    start(seed = 1234): void {
+    start(seed = DEFAULT_SEED): void {
+      editor.setProgramSource(ui.getProgramSource());
       engine.start(seed);
     },
     stop(): void {

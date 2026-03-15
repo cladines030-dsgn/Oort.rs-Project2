@@ -29,6 +29,8 @@ export function createEngine(
   let previousFrameMs = 0;
   let accumulatorMs = 0;
   const timestepMs = dependencies.timestepSeconds * 1000;
+  let currentState = dependencies.simulation.getState();
+  let previousState = currentState;
 
   const frame: FrameRequestCallback = () => {
     if (!running) {
@@ -45,10 +47,16 @@ export function createEngine(
     while (accumulatorMs >= timestepMs) {
       latestState = dependencies.simulation.step(dependencies.timestepSeconds);
       dependencies.combat.resolveTick(latestState);
+      previousState = currentState;
+      currentState = latestState;
       accumulatorMs -= timestepMs;
     }
 
-    dependencies.ui.render(latestState ?? dependencies.simulation.getState());
+    dependencies.ui.render({
+      state: currentState,
+      previousState,
+      interpolationAlpha: Math.max(0, Math.min(0.999, accumulatorMs / timestepMs))
+    });
     dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs());
     rafId = scheduler.requestAnimationFrame(frame);
   };
@@ -73,8 +81,15 @@ export function createEngine(
         dependencies.sandbox.execute(shipId, team, api.currentTick(), api);
       });
 
+      currentState = dependencies.simulation.getState();
+      previousState = currentState;
+
       dependencies.ui.updateStatus("Simulation running");
-      dependencies.ui.render(dependencies.simulation.getState());
+      dependencies.ui.render({
+        state: currentState,
+        previousState,
+        interpolationAlpha: 0
+      });
       dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs());
       rafId = scheduler.requestAnimationFrame(frame);
     },

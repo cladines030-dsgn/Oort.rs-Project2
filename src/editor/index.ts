@@ -14,13 +14,21 @@ const DEFAULT_PROGRAM = `function update(ship) {
 }`;
 
 export function createEditorSystem(initialProgram?: ShipProgramSource): EditorSystem {
-  const currentProgram = initialProgram ?? DEFAULT_PROGRAM;
+  const baseProgram = initialProgram ?? DEFAULT_PROGRAM;
+  let currentProgram = baseProgram;
 
   return {
     initialize(): void {
       // Placeholder for Monaco/CodeMirror integration.
     },
     getProgramSource(): ShipProgramSource {
+      return currentProgram;
+    },
+    setProgramSource(source: ShipProgramSource): void {
+      currentProgram = source;
+    },
+    resetProgramSource(): ShipProgramSource {
+      currentProgram = baseProgram;
       return currentProgram;
     }
   };

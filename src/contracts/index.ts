@@ -100,6 +100,8 @@ export interface CombatEvent {
 export interface SimulationStateSnapshot {
   readonly tick: number;
   readonly seed: number;
+  /** Side length of the square battlefield in metres. */
+  readonly worldSize: number;
   readonly ships: ReadonlyArray<ShipSnapshot>;
   readonly projectiles: ReadonlyArray<ProjectileSnapshot>;
   readonly combatEvents: ReadonlyArray<CombatEvent>;
@@ -197,6 +199,8 @@ export interface CombatSystem {
 export interface EditorSystem {
   initialize(): void;
   getProgramSource(): ShipProgramSource;
+  setProgramSource(source: ShipProgramSource): void;
+  resetProgramSource(): ShipProgramSource;
 }
 
 export interface ShipSandboxSystem {
@@ -211,8 +215,23 @@ export interface ShipSandboxSystem {
 export interface UiSystem {
   mount(container: HTMLElement): void;
   updateStatus(message: string): void;
-  render(state: SimulationStateSnapshot): void;
+  render(frame: UiRenderFrame): void;
   renderScriptLogs(entries: ReadonlyArray<ShipScriptLogEntry>): void;
+  getProgramSource(): ShipProgramSource;
+  setProgramSource(source: ShipProgramSource): void;
+  onRunRequested(handler: () => void): void;
+  onStopRequested(handler: () => void): void;
+  onResetRequested(handler: () => void): void;
+}
+
+export interface UiRenderFrame {
+  readonly state: SimulationStateSnapshot;
+  readonly previousState: SimulationStateSnapshot;
+  /**
+   * Fractional progress toward the next simulation tick in [0, 1).
+   * Used only for visual interpolation; simulation authority stays in state snapshots.
+   */
+  readonly interpolationAlpha: number;
 }
 
 export interface EngineSystem {

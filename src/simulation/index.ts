@@ -296,6 +296,7 @@ function buildSnapshot(world: WorldState): SimulationStateSnapshot {
   return {
     tick: world.tick,
     seed: world.seed,
+    worldSize: world.worldSize,
     ships: world.ships.map(snapshotShip),
     projectiles: world.projectiles.map((p) => ({
       id: p.id,

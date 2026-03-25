@@ -27,7 +27,8 @@ export function createApplication(container: HTMLElement): Application {
     editor,
     sandbox,
     ui,
-    timestepSeconds: 1 / 60
+    timestepSeconds: 1 / 60,
+    targetChallenge: null
   });
 
   const DEFAULT_SEED = 1234;

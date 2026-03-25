@@ -69,9 +69,9 @@ describe("simulation determinism", () => {
       sim.step(dt);
     }
     const ship = sim.getState().ships[0];
-    // Symplectic Euler: vel_n = n m/s, pos_x = Σ(n/60) for n=1..60 = 30.5 m
-    expect(ship.velocity.x).toBeCloseTo(60, 1);
-    expect(ship.position.x).toBeCloseTo(30.5, 1);
+    // Symplectic Euler with 30% mobility boost: a=78 m/s^2, v=78 m/s, x=39.65 m at 1s.
+    expect(ship.velocity.x).toBeCloseTo(78, 1);
+    expect(ship.position.x).toBeCloseTo(39.65, 1);
     expect(ship.position.y).toBeCloseTo(0, 5);
     expect(ship.position.z).toBeCloseTo(0, 8);
   });
@@ -96,17 +96,17 @@ describe("simulation determinism", () => {
 
   test("ship class stats match Oort API reference values", () => {
     expect(SHIP_CLASS_STATS.Fighter.maxHealth).toBe(100);
-    expect(SHIP_CLASS_STATS.Fighter.maxForwardAccel).toBe(60);
-    expect(SHIP_CLASS_STATS.Fighter.maxBackwardAccel).toBe(30);
-    expect(SHIP_CLASS_STATS.Fighter.maxLateralAccel).toBe(30);
-    expect(SHIP_CLASS_STATS.Fighter.maxAngularAccel).toBeCloseTo(2 * Math.PI, 5);
-    expect(SHIP_CLASS_STATS.Fighter.maxAngularSpeed).toBeCloseTo(2 * Math.PI, 5);
+    expect(SHIP_CLASS_STATS.Fighter.maxForwardAccel).toBe(78);
+    expect(SHIP_CLASS_STATS.Fighter.maxBackwardAccel).toBe(39);
+    expect(SHIP_CLASS_STATS.Fighter.maxLateralAccel).toBe(39);
+    expect(SHIP_CLASS_STATS.Fighter.maxAngularAccel).toBeCloseTo(2 * Math.PI * 1.3, 5);
+    expect(SHIP_CLASS_STATS.Fighter.maxAngularSpeed).toBeCloseTo(2 * Math.PI * 1.3, 5);
     expect(SHIP_CLASS_STATS.Frigate.maxHealth).toBe(10_000);
     expect(SHIP_CLASS_STATS.Cruiser.maxHealth).toBe(20_000);
     expect(SHIP_CLASS_STATS.Missile.maxFuel).toBe(2_000);
-    expect(SHIP_CLASS_STATS.Missile.maxForwardAccel).toBe(300);
+    expect(SHIP_CLASS_STATS.Missile.maxForwardAccel).toBe(390);
     expect(SHIP_CLASS_STATS.Torpedo.maxFuel).toBe(3_000);
-    expect(SHIP_CLASS_STATS.Torpedo.maxForwardAccel).toBe(70);
+    expect(SHIP_CLASS_STATS.Torpedo.maxForwardAccel).toBe(91);
   });
 
   test("acceleration is clamped to ship class limits", () => {
@@ -120,8 +120,8 @@ describe("simulation determinism", () => {
     });
     sim.step(1 / 60);
     const ship = sim.getState().ships[0];
-    // velocity must equal maxForwardAccel * dt = 60 * (1/60) = 1 m/s
-    expect(ship.velocity.x).toBeCloseTo(1, 5);
+    // velocity must equal maxForwardAccel * dt = 78 * (1/60) = 1.3 m/s
+    expect(ship.velocity.x).toBeCloseTo(1.3, 5);
   });
 
   test("simulation runs headless without renderer", () => {
@@ -161,9 +161,25 @@ describe("simulation determinism", () => {
     }
 
     const ship = sim.getState().ships[0];
-    expect(ship.velocity.x).toBeCloseTo(60, 1);
-    expect(ship.position.x).toBeCloseTo(90.5, 1);
+    expect(ship.velocity.x).toBeCloseTo(78, 1);
+    expect(ship.position.x).toBeCloseTo(117.65, 1);
     expect(ship.position.y).toBeCloseTo(0, 5);
+  });
+
+  test("legacy setThrust alias still accelerates ships", () => {
+    const sim = createSimulationSystem();
+    sim.initialize(1, {
+      worldSize: 20_000,
+      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
+    });
+
+    sim.registerShipCodeHook((_id, _team, api) => {
+      (api as unknown as { setThrust: (power: number) => void }).setThrust(1);
+    });
+
+    sim.step(1 / 60);
+    const ship = sim.getState().ships[0];
+    expect(ship.velocity.x).toBeCloseTo(1.3, 5);
   });
 
   test("angular velocity is clamped to class rotational speed limit", () => {
@@ -244,8 +260,8 @@ describe("simulation determinism", () => {
 
     sim.step(1 / 60);
     const ship = sim.getState().ships[0];
-    expect(ship.velocity.x).toBeCloseTo(1, 5);
-    expect(ship.velocity.y).toBeCloseTo(0.25, 5);
+    expect(ship.velocity.x).toBeCloseTo(1.3, 5);
+    expect(ship.velocity.y).toBeCloseTo(0.325, 5);
   });
 });
 

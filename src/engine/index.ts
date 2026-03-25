@@ -1,5 +1,4 @@
-import type { EngineDependencies, EngineSystem, SimulationStateSnapshot } from "../contracts"
-import { createTargetChallange } from "../simpleMode"
+import type { EngineDependencies, EngineSystem, SimulationStateSnapshot, WorldConfig, ShipCommandsApi } from "../contracts"
 
 export interface EngineScheduler {
   requestAnimationFrame(callback: FrameRequestCallback): number
@@ -32,7 +31,7 @@ export function createEngine(
   const timestepMs = dependencies.timestepSeconds * 1000
   let currentState = dependencies.simulation.getState()
   let previousState = currentState
-  let targetMode: any
+  const challenge = dependencies.targetChallenge ?? null
 
   const frame: FrameRequestCallback = () => {
     if (!running) return
@@ -45,7 +44,7 @@ export function createEngine(
     while (accumulatorMs >= timestepMs) {
       const latestState: SimulationStateSnapshot = dependencies.simulation.step(dependencies.timestepSeconds)
       dependencies.combat.resolveTick(latestState)
-      targetMode.update(dependencies.timestepSeconds)
+      challenge?.update(dependencies.timestepSeconds, latestState)
       previousState = currentState
       currentState = latestState
       accumulatorMs -= timestepMs
@@ -58,27 +57,31 @@ export function createEngine(
     })
     dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs())
 
-    if (targetMode.isFinished()) {
-      console.log("Target Challange Finished! Score:", targetMode.getScore())
+    if (challenge?.isFinished()) {
+      running = false
+      scheduler.cancelAnimationFrame(rafId)
+      dependencies.ui.updateStatus(`Challenge complete! Score: ${challenge.getScore()}`)
+      return
     }
 
     rafId = scheduler.requestAnimationFrame(frame)
   }
 
   return {
-    start(seed = 1): void {
+    start(seed = 1, worldConfig?: WorldConfig): void {
       if (running) return
       running = true
       accumulatorMs = 0
       previousFrameMs = scheduler.now()
 
-      dependencies.simulation.initialize(seed)
+      dependencies.simulation.initialize(seed, worldConfig)
       dependencies.combat.initialize()
       dependencies.editor.initialize()
 
       const source = dependencies.editor.getProgramSource()
       dependencies.sandbox.initialize(source)
-      dependencies.simulation.registerShipCodeHook((shipId: any, team: any, api: any) => {
+      dependencies.simulation.registerShipCodeHook((shipId: number, team: number, api: ShipCommandsApi) => {
+        if (team !== 0) return
         dependencies.sandbox.execute(shipId, team, api.currentTick(), api)
       })
 
@@ -91,9 +94,6 @@ export function createEngine(
         interpolationAlpha: 0
       })
       dependencies.ui.renderScriptLogs(dependencies.sandbox.flushLogs())
-
-      const rng = { next: () => Math.random() }
-      targetMode = createTargetChallange(dependencies.simulation, rng)
 
       rafId = scheduler.requestAnimationFrame(frame)
     },

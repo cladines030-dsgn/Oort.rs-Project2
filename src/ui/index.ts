@@ -534,6 +534,10 @@ export function createUiSystem(): UiSystem {
       }
     },
 
+    attachToCanvas(canvas: HTMLCanvasElement): void {
+      canvasEl = canvas;
+    },
+
     onRunRequested(handler: () => void): void {
       runHandler = handler;
     },

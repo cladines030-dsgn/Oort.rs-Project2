@@ -17,9 +17,9 @@ export function Challenges() {
 
   const dropdownContent = {
     "What is Oort.rs?":
-      "Oort.rs is a programming game where you control spaceships by writing JavaScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
+      "Oort.rs is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
     "How do I start?":
-      "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Shooting Carnival. When ready, face real opponents in Multi-Play mode.",
+      "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Target Practice. When ready, face real opponents in Multi-Play mode.",
     "Your first mission":
       "Your first tutorial mission teaches fundamental ship control. Learn to activate engines, rotate your ship, and fire weapons. Master the radar system to detect enemies and coordinate fleet movements. Each lesson builds your skills for more complex battles."
   };
@@ -106,7 +106,7 @@ export function Challenges() {
                     boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
                   }}
                 >
-                  Shooting Carnival
+                  Target Practice
                 </button>
               </div>
             </motion.div>

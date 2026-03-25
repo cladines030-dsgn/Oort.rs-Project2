@@ -110,6 +110,9 @@ function createUiMock(): UiSystem {
     mount(): void {
       // no-op
     },
+    attachToCanvas(): void {
+      // no-op
+    },
     updateStatus(): void {
       // no-op
     },
@@ -143,6 +146,9 @@ function createUiRecorderMock(): { ui: UiSystem; frames: UiRenderFrame[] } {
   return {
     ui: {
       mount(): void {
+        // no-op
+      },
+      attachToCanvas(): void {
         // no-op
       },
       updateStatus(): void {

@@ -37,30 +37,32 @@ export function Header() {
               Challenges
               <span className="text-xs">▾</span>
             </button>
-            <div
-              className="absolute top-full left-0 mt-2 bg-[#0A1020] border border-primary hidden group-hover:block min-w-[200px] z-[9999]"
-              style={{
-                boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
-              }}
-            >
-              <Link
-                to="/challenges?mode=defense"
-                className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors"
+            <div className="absolute top-full left-0 pt-2 hidden group-hover:block group-focus-within:block min-w-[200px] z-[9999]">
+              <div
+                className="bg-[#0A1020] border border-primary"
+                style={{
+                  boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
+                }}
               >
-                Defense
-              </Link>
-              <Link
-                to="/challenges?mode=obstacle"
-                className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
-              >
-                Obstacle Course
-              </Link>
-              <Link
-                to="/challenges?mode=shooting"
-                className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
-              >
-                Shooting Carnival
-              </Link>
+                <Link
+                  to="/challenges?mode=defense"
+                  className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  Defense
+                </Link>
+                <Link
+                  to="/challenges?mode=obstacle"
+                  className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
+                >
+                  Obstacle Course
+                </Link>
+                <Link
+                  to="/challenges?mode=shooting"
+                  className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
+                >
+                  Target Practice
+                </Link>
+              </div>
             </div>
           </div>
 

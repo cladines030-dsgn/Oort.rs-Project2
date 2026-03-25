@@ -16,8 +16,8 @@ export function Challenges() {
   };
 
   const dropdownContent = {
-    "What is Oort.rs?":
-      "Oort.rs is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
+    "What is oort.tsx?":
+      "oort.tsx is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
     "How do I start?":
       "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Target Practice. When ready, face real opponents in Multi-Play mode.",
     "Your first mission":

@@ -17,8 +17,8 @@ export function Home() {
   };
 
   const dropdownContent = {
-    "What is Oort.rs?":
-      "Oort.rs is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
+    "What is oort.tsx?":
+      "oort.tsx is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
     "How do I start?":
       "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Target Practice. When ready, face real opponents in Multi-Play mode.",
     "Your first mission":
@@ -43,7 +43,7 @@ export function Home() {
           {/* Header */}
           <div className="text-center mb-16">
             <h1 className="header-font mb-4" style={{ fontSize: "4rem", letterSpacing: "0.2em" }}>
-              <span className="text-white neon-text">OORT.RS</span>
+              <span className="text-white neon-text">OORT.TSX</span>
             </h1>
             <p className="code-font text-[#A8D8FF] text-sm tracking-wide">
               "Program your fleet. Command the void."

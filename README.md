@@ -1,4 +1,4 @@
-# Oort.js (Checkpoint 1 Baseline)
+# oort.tsx (Checkpoint 1 Baseline)
 
 Browser-native strategy simulator foundation inspired by Oort.rs.
 

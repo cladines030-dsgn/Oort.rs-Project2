@@ -14,7 +14,7 @@ export function Header() {
       >
         {/* Wordmark */}
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="header-font tracking-wider text-white">Oort.rs</span>
+          <span className="header-font tracking-wider text-white">oort.tsx</span>
         </Link>
 
         {/* Navigation */}

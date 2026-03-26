@@ -6,7 +6,12 @@ export function HeroPanel() {
   const [showCursor, setShowCursor] = useState(true);
   const [animationCycle, setAnimationCycle] = useState(0);
 
-  const codeLines = ["function tick() {", "  ship.turnTowards(target);", "  ship.fire();", "}"];
+  const codeLines = [
+    "function update(ship) {",
+    "  ship.turn(0.8);",
+    "  if (ship.reloadTicks(0) === 0) ship.fire(0);",
+    "}"
+  ];
 
   useEffect(() => {
     const fullCode = codeLines.join("\n");
@@ -49,14 +54,15 @@ export function HeroPanel() {
               <pre className="code-font text-sm text-foreground">
                 <code>
                   <span className="text-[#A8D8FF]">function</span>{" "}
-                  <span className="text-[#00CFFF]">tick</span>() {"{\n"}
+                  <span className="text-[#00CFFF]">update</span>(ship) {"{\n"}
                   <span className="text-[#A8D8FF]"> ship</span>.
-                  <span className="text-[#00CFFF]">turnTowards</span>(target);
-                  <span className="opacity-0">{codeText.includes("target") ? "" : "x"}</span>
+                  <span className="text-[#00CFFF]">turn</span>(0.8);
+                  <span className="opacity-0">{codeText.includes("turn") ? "" : "x"}</span>
                   {"\n"}
-                  <span className="text-[#A8D8FF]"> ship</span>.
-                  <span className="text-[#00CFFF]">fire</span>();
-                  <span className="opacity-0">{codeText.includes("fire") ? "" : "x"}</span>
+                  <span className="text-[#A8D8FF]"> if (ship</span>.
+                  <span className="text-[#00CFFF]">reloadTicks</span>(0) === 0) ship.
+                  <span className="text-[#00CFFF]">fire</span>(0);
+                  <span className="opacity-0">{codeText.includes("reloadTicks") ? "" : "x"}</span>
                   {"\n"}
                   {"}"}
                 </code>

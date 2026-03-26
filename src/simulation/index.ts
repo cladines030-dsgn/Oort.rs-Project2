@@ -441,36 +441,7 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
     }
   };
 
-  const legacyApi = api as ShipCommandsApi & {
-    setThrust: (power: number) => void;
-    setStrafe: (power: number) => void;
-    setTorque: (acceleration: number) => void;
-    turnTowards: (targetOrX: Vec3 | number, y?: number) => void;
-    canFire: (weaponIndex?: number) => boolean;
-  };
-
-  legacyApi.setThrust = (power: number): void => {
-    api.thrust(power);
-  };
-  legacyApi.setStrafe = (power: number): void => {
-    api.strafe(power);
-  };
-  legacyApi.setTorque = (acceleration: number): void => {
-    api.torque(acceleration);
-  };
-  legacyApi.turnTowards = (targetOrX: Vec3 | number, y?: number): void => {
-    if (typeof targetOrX === "number") {
-      if (typeof y === "number") {
-        api.setHeading(Math.atan2(y - entity.position.y, targetOrX - entity.position.x));
-      }
-      return;
-    }
-
-    api.setHeading(Math.atan2(targetOrX.y - entity.position.y, targetOrX.x - entity.position.x));
-  };
-  legacyApi.canFire = (weaponIndex = 0): boolean => api.reloadTicks(weaponIndex) === 0;
-
-  return legacyApi;
+  return api;
 }
 
 // ---------------------------------------------------------------------------

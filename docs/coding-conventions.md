@@ -1,6 +1,6 @@
 # Coding Conventions
 
-These conventions enforce modularity and replaceable subsystems for Oort.js.
+These conventions enforce modularity and replaceable subsystems for oort.tsx.
 
 ## Naming and API Design
 

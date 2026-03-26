@@ -23,14 +23,16 @@ import {
 } from "../math";
 import type { Vec3 } from "../math";
 
+const SHIP_MOBILITY_MULTIPLIER = 1.3;
+
 export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
   Fighter: {
     maxHealth: 100,
-    maxForwardAccel: 60,
-    maxBackwardAccel: 30,
-    maxLateralAccel: 30,
-    maxAngularAccel: 2 * Math.PI,
-    maxAngularSpeed: 2 * Math.PI,
+    maxForwardAccel: 60 * SHIP_MOBILITY_MULTIPLIER,
+    maxBackwardAccel: 30 * SHIP_MOBILITY_MULTIPLIER,
+    maxLateralAccel: 30 * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularAccel: 2 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularSpeed: 2 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
     maxFuel: null,
     weapons: [
       {
@@ -55,11 +57,11 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
   },
   Frigate: {
     maxHealth: 10_000,
-    maxForwardAccel: 10,
-    maxBackwardAccel: 5,
-    maxLateralAccel: 5,
-    maxAngularAccel: Math.PI / 4,
-    maxAngularSpeed: Math.PI / 2,
+    maxForwardAccel: 10 * SHIP_MOBILITY_MULTIPLIER,
+    maxBackwardAccel: 5 * SHIP_MOBILITY_MULTIPLIER,
+    maxLateralAccel: 5 * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularAccel: (Math.PI / 4) * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularSpeed: (Math.PI / 2) * SHIP_MOBILITY_MULTIPLIER,
     maxFuel: null,
     weapons: [
       {
@@ -102,11 +104,11 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
   },
   Cruiser: {
     maxHealth: 20_000,
-    maxForwardAccel: 5,
-    maxBackwardAccel: 2.5,
-    maxLateralAccel: 2.5,
-    maxAngularAccel: Math.PI / 8,
-    maxAngularSpeed: Math.PI / 4,
+    maxForwardAccel: 5 * SHIP_MOBILITY_MULTIPLIER,
+    maxBackwardAccel: 2.5 * SHIP_MOBILITY_MULTIPLIER,
+    maxLateralAccel: 2.5 * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularAccel: (Math.PI / 8) * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularSpeed: (Math.PI / 4) * SHIP_MOBILITY_MULTIPLIER,
     maxFuel: null,
     weapons: [
       {
@@ -149,21 +151,21 @@ export const SHIP_CLASS_STATS: Record<ShipClass, ShipClassStats> = {
   },
   Missile: {
     maxHealth: 20,
-    maxForwardAccel: 300,
+    maxForwardAccel: 300 * SHIP_MOBILITY_MULTIPLIER,
     maxBackwardAccel: 0,
-    maxLateralAccel: 100,
-    maxAngularAccel: 4 * Math.PI,
-    maxAngularSpeed: 4 * Math.PI,
+    maxLateralAccel: 100 * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularAccel: 4 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularSpeed: 4 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
     maxFuel: 2_000,
     weapons: []
   },
   Torpedo: {
     maxHealth: 100,
-    maxForwardAccel: 70,
+    maxForwardAccel: 70 * SHIP_MOBILITY_MULTIPLIER,
     maxBackwardAccel: 0,
-    maxLateralAccel: 20,
-    maxAngularAccel: 2 * Math.PI,
-    maxAngularSpeed: 2 * Math.PI,
+    maxLateralAccel: 20 * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularAccel: 2 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
+    maxAngularSpeed: 2 * Math.PI * SHIP_MOBILITY_MULTIPLIER,
     maxFuel: 3_000,
     weapons: []
   }
@@ -327,7 +329,7 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
     entity.pending.turn = targetAngularVelocity;
   };
 
-  return {
+  const api: ShipCommandsApi = {
     position: () => entity.position,
     velocity: () => entity.velocity,
     heading: () => entity.heading,
@@ -423,7 +425,7 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
     torque(acceleration: number): void {
       entity.pending.torque = acceleration;
     },
-    fire(weaponIndex: number): void {
+    fire(weaponIndex = 0): void {
       if (weaponIndex >= 0 && weaponIndex < stats.weapons.length) {
         if (entity.pending.fireCommands.indexOf(weaponIndex) === -1) {
           entity.pending.fireCommands.push(weaponIndex);
@@ -438,6 +440,37 @@ function createShipApi(entity: ShipEntity, tick: number): ShipCommandsApi {
       return Math.ceil(cooldownSecs / (1 / 60)); // Convert seconds to ticks (60 ticks per second).
     }
   };
+
+  const legacyApi = api as ShipCommandsApi & {
+    setThrust: (power: number) => void;
+    setStrafe: (power: number) => void;
+    setTorque: (acceleration: number) => void;
+    turnTowards: (targetOrX: Vec3 | number, y?: number) => void;
+    canFire: (weaponIndex?: number) => boolean;
+  };
+
+  legacyApi.setThrust = (power: number): void => {
+    api.thrust(power);
+  };
+  legacyApi.setStrafe = (power: number): void => {
+    api.strafe(power);
+  };
+  legacyApi.setTorque = (acceleration: number): void => {
+    api.torque(acceleration);
+  };
+  legacyApi.turnTowards = (targetOrX: Vec3 | number, y?: number): void => {
+    if (typeof targetOrX === "number") {
+      if (typeof y === "number") {
+        api.setHeading(Math.atan2(y - entity.position.y, targetOrX - entity.position.x));
+      }
+      return;
+    }
+
+    api.setHeading(Math.atan2(targetOrX.y - entity.position.y, targetOrX.x - entity.position.x));
+  };
+  legacyApi.canFire = (weaponIndex = 0): boolean => api.reloadTicks(weaponIndex) === 0;
+
+  return legacyApi;
 }
 
 // ---------------------------------------------------------------------------

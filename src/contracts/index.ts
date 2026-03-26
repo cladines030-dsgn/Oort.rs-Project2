@@ -214,6 +214,8 @@ export interface ShipSandboxSystem {
 
 export interface UiSystem {
   mount(container: HTMLElement): void;
+  /** Attach the canvas renderer to an existing canvas without full DOM mounting. */
+  attachToCanvas(canvas: HTMLCanvasElement): void;
   updateStatus(message: string): void;
   render(frame: UiRenderFrame): void;
   renderScriptLogs(entries: ReadonlyArray<ShipScriptLogEntry>): void;
@@ -235,9 +237,20 @@ export interface UiRenderFrame {
 }
 
 export interface EngineSystem {
-  start(seed?: number): void;
+  start(seed?: number, worldConfig?: WorldConfig): void;
   stop(): void;
   isRunning(): boolean;
+}
+
+/**
+ * Optional challenge mode hooked into the engine tick loop.
+ * `update` is called once per simulation tick with the tick delta and latest state.
+ */
+export interface TargetChallengeMode {
+  update(dt: number, state: SimulationStateSnapshot): void;
+  isFinished(): boolean;
+  getScore(): number;
+  getTime(): number;
 }
 
 export interface EngineDependencies {
@@ -247,4 +260,6 @@ export interface EngineDependencies {
   sandbox: ShipSandboxSystem;
   ui: UiSystem;
   timestepSeconds: number;
+  /** Optional challenge controller to drive per-tick logic. */
+  targetChallenge?: TargetChallengeMode | null;
 }

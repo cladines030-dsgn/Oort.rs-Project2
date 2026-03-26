@@ -355,7 +355,7 @@ export function createUiSystem(): UiSystem {
       headingRow.className = "heading-row";
 
       const title = document.createElement("h1");
-      title.textContent = "Oort.js Battle Lab";
+      title.textContent = "oort.tsx Battle Lab";
 
       statusEl = document.createElement("p");
       statusEl.className = "status";
@@ -532,6 +532,10 @@ export function createUiSystem(): UiSystem {
       if (codeEditorEl) {
         codeEditorEl.value = source;
       }
+    },
+
+    attachToCanvas(canvas: HTMLCanvasElement): void {
+      canvasEl = canvas;
     },
 
     onRunRequested(handler: () => void): void {

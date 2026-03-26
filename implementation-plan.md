@@ -1,4 +1,4 @@
-# Oort.js Implementation Plan
+# oort.tsx Implementation Plan
 
 Source: `constitution.md` (Version 1.0, updated 2026-03-09)
 

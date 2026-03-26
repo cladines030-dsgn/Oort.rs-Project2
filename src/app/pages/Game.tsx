@@ -1,70 +1,308 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { Header } from "../components/Header";
 import { SpaceBackground } from "../components/SpaceBackground";
 import { useSearchParams } from "react-router";
-import { motion } from "motion/react";
+import { createEngine } from "../../engine";
+import { createSimulationSystem } from "../../simulation";
+import { createCombatSystem } from "../../combat";
+import { createEditorSystem } from "../../editor";
+import { createShipSandboxSystem } from "../../sandbox";
+import { createUiSystem } from "../../ui";
+import {
+  createTargetChallange,
+  createTargetChallengeConfig
+} from "../../simpleMode";
+import type { UiSystem, WorldConfig } from "../../contracts";
+
+const TUTORIAL_LESSON_STARTER_CODE: Record<string, string> = {
+  "1": `// Tutorial 1: Basic Movement
+// update(ship) runs 60 times per second.
+// Goal: make controlled movement instead of drifting forever.
+
+function update(ship) {
+  // Two-point patrol using moveTo helper.
+  const phase = Math.floor(ship.currentTick() / 180) % 2;
+  const waypoint = phase === 0 ? { x: 1200, y: 0 } : { x: -1200, y: 0 };
+  ship.moveTo(waypoint.x, waypoint.y);
+
+  // Keep one weapon active so you can see fire/reload behavior.
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`,
+
+  "2": `// Tutorial 2: Steering Practice
+// Goal: hold near the center and rotate to inspect heading control.
+
+function update(ship) {
+  // Stay near center to avoid endless forward travel.
+  ship.moveTo(0, 0);
+
+  // Slow continuous turn while parked near center.
+  ship.turn(0.6);
+
+  // Fire on cooldown.
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`,
+
+  "3": `// Tutorial 3: Weapons & Combat
+// Goal: act like a stationary turret and fire whenever possible.
+
+function update(ship) {
+  // Brake first so recoil/motion does not drift you away.
+  ship.brake(1.0);
+
+  // Sweep firing arc.
+  ship.turn(1.0);
+
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`,
+
+  "4": `// Tutorial 4: Coordination Prep
+// Fleet messaging APIs are not wired yet.
+// For now, this starter demonstrates stable patrol + fire control.
+
+function update(ship) {
+  const phase = Math.floor(ship.currentTick() / 240) % 4;
+
+  if (phase === 0) ship.moveTo(800, 800);
+  if (phase === 1) ship.moveTo(-800, 800);
+  if (phase === 2) ship.moveTo(-800, -800);
+  if (phase === 3) ship.moveTo(800, -800);
+
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`,
+
+  default: `// Tutorial starter
+// Keep update(ship) defined. It runs every tick.
+
+function update(ship) {
+  ship.moveTo(0, 0);
+
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`
+};
+
+const STANDARD_STARTER_CODE = `// Standard starter
+// update(ship) runs every tick.
+
+function update(ship) {
+  ship.thrust(1.0);
+
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`;
+
+const CHALLENGE_STARTER_CODE: Record<string, string> = {
+  // Challenge-specific templates live here.
+  // Add new keys as scenarios are implemented (defense, obstacle, etc).
+  shooting: `// Challenge: Target Practice
+// Goal: Destroy as many static targets as possible before time runs out.
+
+function update(ship) {
+  // Stay controlled and rotate to sweep targets.
+  ship.brake(1.0);
+  ship.turn(0.9);
+
+  if (ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`,
+  defense: `// Challenge: Defense (starter placeholder)
+// Tip: Keep your ship between threats and the protected zone.
+
+function update(ship) {
+  // TODO: Move to patrol position.
+  // TODO: Prioritize nearest threat.
+}`,
+  obstacle: `// Challenge: Obstacle Course (starter placeholder)
+// Tip: Balance thrust and turning to avoid collisions.
+
+function update(ship) {
+  // TODO: Steer toward checkpoints.
+  // TODO: Slow down before tight turns.
+}`,
+  default: `// Challenge starter
+// Scenario-specific starting code can be added in CHALLENGE_STARTER_CODE.
+
+function update(ship) {
+  // TODO: Implement your challenge strategy.
+}`
+};
+
+const CHALLENGE_DISPLAY_NAMES: Record<string, string> = {
+  shooting: "Target Practice",
+  defense: "Defense",
+  obstacle: "Obstacle Course"
+};
+
+function getStarterCodeForScenario(mode: string, challenge: string, lesson: string): string {
+  if (mode === "tutorial") {
+    return TUTORIAL_LESSON_STARTER_CODE[lesson] ?? TUTORIAL_LESSON_STARTER_CODE.default;
+  }
+
+  if (mode === "challenges") {
+    return CHALLENGE_STARTER_CODE[challenge] ?? CHALLENGE_STARTER_CODE.default;
+  }
+
+  return STANDARD_STARTER_CODE;
+}
+
+const DEFAULT_SEED = 1234;
 
 export function Game() {
   const [searchParams] = useSearchParams();
   const mode = searchParams.get("mode") || "tutorial";
   const challenge = searchParams.get("challenge") || "defense";
+  const lesson = searchParams.get("lesson") || "1";
+  const scenarioKey = mode === "tutorial" ? `${mode}:${lesson}` : `${mode}:${challenge}`;
 
-  const [code, setCode] = useState(`// Control your spaceship
-// This function runs 60 times per second
-
-function tick() {
-  // Activate engines
-  ship.setThrust(1.0);
-  
-  // Fire weapons at target
-  if (radar.hasTarget()) {
-    ship.fire();
-  }
-  
-  // Rotate towards enemy
-  const target = radar.getClosest();
-  if (target) {
-    ship.turnTowards(target.position);
-  }
-}`);
-
+  const [code, setCode] = useState(() => getStarterCodeForScenario(mode, challenge, lesson));
   const [isRunning, setIsRunning] = useState(false);
-  const [time, setTime] = useState(mode === "tutorial" ? 300 : 180); // 5:00 for tutorial, 3:00 for challenges
-  const [hits, setHits] = useState(0);
-  const [score, setScore] = useState(0);
+  const [status, setStatus] = useState("Ready");
+  const [challengeScore, setChallengeScore] = useState(0);
+  const [challengeTime, setChallengeTime] = useState(60);
+  const [challengeDone, setChallengeDone] = useState(false);
+  const [hitPops, setHitPops] = useState<{ id: number }[]>([]);
+  const hitPopIdRef = useRef(0);
+
+  // Refs — keep latest values that the engine needs without re-creating it
+  const codeRef = useRef(code);
+  const scenarioRef = useRef(scenarioKey);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<ReturnType<typeof createEngine> | null>(null);
+  const editorRef = useRef<ReturnType<typeof createEditorSystem> | null>(null);
+  const challengeRef = useRef<ReturnType<typeof createTargetChallange> | null>(null);
 
   useEffect(() => {
-    if (isRunning && time > 0) {
-      const interval = setInterval(() => {
-        setTime((prev) => prev - 1);
-        // Simulate score increase
-        if (Math.random() > 0.7) {
-          setHits((prev) => prev + 1);
-          setScore((prev) => prev + 10);
-        }
-      }, 1000);
-      return () => clearInterval(interval);
+    codeRef.current = code;
+  }, [code]);
+
+  useEffect(() => {
+    if (scenarioRef.current === scenarioKey) return;
+    scenarioRef.current = scenarioKey;
+
+    engineRef.current?.stop();
+    setIsRunning(false);
+    setCode(getStarterCodeForScenario(mode, challenge, lesson));
+    setStatus("Starter code loaded");
+  }, [mode, challenge, lesson, scenarioKey]);
+
+  // Poll challenge score/time/hits while running (shooting mode only)
+  useEffect(() => {
+    if (!isRunning || challenge !== "shooting") return;
+    const interval = setInterval(() => {
+      const ch = challengeRef.current;
+      if (!ch) return;
+      setChallengeScore(ch.getScore());
+      setChallengeTime(ch.getTime());
+
+      const newHits = ch.flushHits();
+      if (newHits > 0) {
+        setHitPops((prev) => {
+          const additions = Array.from({ length: newHits }, () => {
+            hitPopIdRef.current += 1;
+            return { id: hitPopIdRef.current };
+          });
+          return [...prev, ...additions];
+        });
+      }
+
+      if (ch.isFinished()) {
+        setChallengeDone(true);
+        setIsRunning(false);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isRunning, challenge]);
+
+  // Stop engine if component unmounts while running
+  useEffect(() => {
+    return () => {
+      engineRef.current?.stop();
+    };
+  }, []);
+
+  const handleToggleRun = useCallback(() => {
+    if (isRunning) {
+      engineRef.current?.stop();
+      setIsRunning(false);
+      setStatus("Simulation stopped");
+      return;
     }
-  }, [isRunning, time]);
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Create fresh systems for each run
+    const simulation = createSimulationSystem();
+    const combat = createCombatSystem();
+    const freshEditor = createEditorSystem();
+    const sandbox = createShipSandboxSystem();
+    const ui = createUiSystem() as UiSystem & { attachToCanvas: (c: HTMLCanvasElement) => void };
+    ui.attachToCanvas(canvas);
+    freshEditor.initialize();
+    freshEditor.setProgramSource(codeRef.current);
+    editorRef.current = freshEditor;
+
+    let challengeMode: ReturnType<typeof createTargetChallange> | null = null;
+    let worldConfig: WorldConfig | undefined;
+
+    if (challenge === "shooting") {
+      const rng = { next: () => Math.random() };
+      const ch = createTargetChallange();
+      challengeRef.current = ch;
+      challengeMode = ch;
+      worldConfig = createTargetChallengeConfig(rng);
+      setChallengeScore(0);
+      setChallengeTime(60);
+      setChallengeDone(false);
+      setHitPops([]);
+    }
+
+    const engine = createEngine({
+      simulation,
+      combat,
+      editor: freshEditor,
+      sandbox,
+      ui,
+      timestepSeconds: 1 / 60,
+      targetChallenge: challengeMode
+    });
+    engineRef.current = engine;
+    engine.start(DEFAULT_SEED, worldConfig);
+    setIsRunning(true);
+    setStatus("Simulation running");
+  }, [isRunning, challenge]);
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    const secs = Math.max(0, Math.floor(seconds));
+    const mins = Math.floor(secs / 60);
+    return `${mins}:${String(secs % 60).padStart(2, "0")}`;
   };
 
-  const getTimeColor = () => {
-    if (mode === "tutorial" && time < 60) return "#FF4B4B";
-    if (mode === "challenges" && time < 45) return "#FF4B4B";
-    return "#00CFFF";
-  };
+  const getTimeColor = () => (challengeTime < 15 ? "#FF4B4B" : "#00CFFF");
 
   const getModeName = () => {
     if (mode === "challenges") {
-      return challenge.charAt(0).toUpperCase() + challenge.slice(1);
+      return CHALLENGE_DISPLAY_NAMES[challenge] ?? challenge;
     }
+
     return mode.charAt(0).toUpperCase() + mode.slice(1);
   };
+
+  const isPlaceholderChallenge =
+    mode === "challenges" && challenge !== "shooting";
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -110,7 +348,7 @@ function tick() {
 
             <div className="p-4 border-t border-primary/30 bg-card/60 backdrop-blur-sm">
               <button
-                onClick={() => setIsRunning(!isRunning)}
+                onClick={handleToggleRun}
                 className="w-full py-3 px-6 bg-primary text-black uppercase tracking-wider hover:bg-white transition-all code-font border border-primary"
                 style={{
                   boxShadow: "0 0 15px rgba(0, 207, 255, 0.4)"
@@ -118,6 +356,9 @@ function tick() {
               >
                 [ {isRunning ? "STOP" : "RUN"} SIMULATION ]
               </button>
+              {status !== "Ready" && (
+                <p className="mt-2 text-xs code-font text-center text-[#A8D8FF]">{status}</p>
+              )}
             </div>
           </div>
 
@@ -133,256 +374,87 @@ function tick() {
             </div>
 
             <div className="flex-1 relative bg-black overflow-hidden">
-              {/* Mode badge for challenges */}
-              {mode === "challenges" && (
-                <div
-                  className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm border border-primary px-3 py-1.5 code-font text-xs uppercase tracking-wider text-primary z-20"
-                  style={{
-                    boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
-                  }}
-                >
-                  {getModeName()}
-                </div>
-              )}
-
-              {/* Multiplayer split view */}
-              {mode === "multiplayer" ? (
-                <div className="h-full flex flex-col">
-                  {/* Your Fleet */}
-                  <div className="flex-1 border-b border-primary/30 relative">
-                    <div className="absolute top-4 left-4 text-[#A8D8FF] code-font text-xs uppercase tracking-wider z-20">
-                      YOUR FLEET
-                    </div>
-                    {/* Starfield */}
-                    <div className="absolute inset-0">
-                      {[...Array(50)].map((_, i) => (
-                        <div
-                          key={i}
-                          className="absolute rounded-full bg-[#A8D8FF]"
-                          style={{
-                            width: Math.random() * 2 + 1 + "px",
-                            height: Math.random() * 2 + 1 + "px",
-                            left: Math.random() * 100 + "%",
-                            top: Math.random() * 100 + "%",
-                            opacity: Math.random() * 0.5 + 0.3
-                          }}
-                        />
-                      ))}
-                    </div>
-                    {/* Grid */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `
-                        linear-gradient(rgba(0, 207, 255, 0.1) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(0, 207, 255, 0.1) 1px, transparent 1px)
-                      `,
-                        backgroundSize: "50px 50px"
-                      }}
-                    />
-                    {/* Ship */}
-                    {isRunning && (
-                      <motion.div
-                        className="absolute w-8 h-8"
-                        style={{ left: "40%", top: "40%" }}
-                        animate={{
-                          x: [0, 30, 0],
-                          y: [0, -15, 0]
-                        }}
-                        transition={{
-                          duration: 4,
-                          repeat: Infinity,
-                          ease: "linear"
-                        }}
-                      >
-                        <svg width="32" height="32" viewBox="0 0 32 32">
-                          <polygon points="16,4 24,16 16,12 8,16" fill="#00CFFF" opacity="0.8" />
-                        </svg>
-                      </motion.div>
-                    )}
+              {isPlaceholderChallenge ? (
+                /* Placeholder for Defense and Obstacle Course challenges */
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
+                  <div
+                    className="text-primary opacity-30"
+                    style={{ fontSize: "64px", lineHeight: 1 }}
+                  >
+                    ⬡
                   </div>
-
-                  {/* Opponent Fleet */}
-                  <div className="flex-1 relative">
-                    <div className="absolute top-4 left-4 text-[#FF4B4B] code-font text-xs uppercase tracking-wider z-20">
-                      OPPONENT FLEET
-                    </div>
-                    {/* Starfield */}
-                    <div className="absolute inset-0">
-                      {[...Array(50)].map((_, i) => (
-                        <div
-                          key={`opp-${i}`}
-                          className="absolute rounded-full bg-[#A8D8FF]"
-                          style={{
-                            width: Math.random() * 2 + 1 + "px",
-                            height: Math.random() * 2 + 1 + "px",
-                            left: Math.random() * 100 + "%",
-                            top: Math.random() * 100 + "%",
-                            opacity: Math.random() * 0.5 + 0.3
-                          }}
-                        />
-                      ))}
-                    </div>
-                    {/* Grid */}
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        backgroundImage: `
-                        linear-gradient(rgba(255, 75, 75, 0.1) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(255, 75, 75, 0.1) 1px, transparent 1px)
-                      `,
-                        backgroundSize: "50px 50px"
-                      }}
-                    />
-                    {/* Ship */}
-                    {isRunning && (
-                      <motion.div
-                        className="absolute w-8 h-8"
-                        style={{ left: "60%", top: "60%" }}
-                        animate={{
-                          x: [0, -30, 0],
-                          y: [0, 15, 0]
-                        }}
-                        transition={{
-                          duration: 5,
-                          repeat: Infinity,
-                          ease: "linear"
-                        }}
-                      >
-                        <svg width="32" height="32" viewBox="0 0 32 32">
-                          <polygon points="16,28 24,16 16,20 8,16" fill="#FF4B4B" opacity="0.8" />
-                        </svg>
-                      </motion.div>
-                    )}
+                  <div className="text-center">
+                    <h2
+                      className="uppercase tracking-widest header-font mb-3"
+                      style={{ color: "#00CFFF" }}
+                    >
+                      {getModeName()} Challenge
+                    </h2>
+                    <p className="code-font text-sm text-[#A8D8FF]/60 max-w-sm">
+                      Coming soon — this challenge is under construction.
+                    </p>
+                  </div>
+                  <div
+                    className="px-6 py-2 border border-primary/40 code-font text-xs uppercase tracking-widest text-primary/60"
+                    style={{ boxShadow: "0 0 10px rgba(0, 207, 255, 0.1)" }}
+                  >
+                    [ PLACEHOLDER ]
                   </div>
                 </div>
               ) : (
-                <>
-                  {/* Single view for tutorial and challenges */}
-                  {/* Starfield */}
-                  <div className="absolute inset-0">
-                    {[...Array(100)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute rounded-full bg-[#A8D8FF]"
-                        style={{
-                          width: Math.random() * 2 + 1 + "px",
-                          height: Math.random() * 2 + 1 + "px",
-                          left: Math.random() * 100 + "%",
-                          top: Math.random() * 100 + "%",
-                          opacity: Math.random() * 0.5 + 0.3
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Grid */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `
-                      linear-gradient(rgba(0, 207, 255, 0.1) 1px, transparent 1px),
-                      linear-gradient(90deg, rgba(0, 207, 255, 0.1) 1px, transparent 1px)
-                    `,
-                      backgroundSize: "50px 50px"
-                    }}
-                  />
-
-                  {/* Ships */}
-                  {isRunning && (
-                    <>
-                      <motion.div
-                        className="absolute"
-                        style={{ left: "30%", top: "40%" }}
-                        animate={{
-                          x: [0, 50, 0],
-                          y: [0, -20, 0]
-                        }}
-                        transition={{
-                          duration: 6,
-                          repeat: Infinity,
-                          ease: "linear"
-                        }}
-                      >
-                        <svg width="40" height="40" viewBox="0 0 40 40">
-                          <polygon points="20,5 30,20 20,15 10,20" fill="#00CFFF" opacity="0.8" />
-                        </svg>
-                      </motion.div>
-
-                      <motion.div
-                        className="absolute"
-                        style={{ left: "60%", top: "60%" }}
-                        animate={{
-                          x: [0, -30, 0],
-                          y: [0, 15, 0]
-                        }}
-                        transition={{
-                          duration: 5,
-                          repeat: Infinity,
-                          ease: "linear"
-                        }}
-                      >
-                        <svg width="32" height="32" viewBox="0 0 32 32">
-                          <polygon points="16,28 24,16 16,20 8,16" fill="#FF4B4B" opacity="0.8" />
-                        </svg>
-                      </motion.div>
-                    </>
-                  )}
-                </>
+                /* Real canvas-based simulation */
+                <canvas
+                  ref={canvasRef}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ display: "block" }}
+                />
               )}
 
-              {/* Scoreboard - Top Right */}
-              <div
-                className="absolute top-4 right-4 bg-card/90 backdrop-blur-sm border border-primary p-3 min-w-[160px] z-20"
-                style={{
-                  boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
-                }}
-              >
-                {mode === "multiplayer" ? (
-                  <div className="code-font text-xs space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-[#A8D8FF]">YOU</span>
-                      <span className="text-white">{score}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#FF4B4B]">OPPONENT</span>
-                      <span className="text-white">{Math.floor(score * 0.8)}</span>
-                    </div>
-                  </div>
-                ) : (
+              {/* Challenge scoreboard (shooting mode only) */}
+              {mode === "challenges" && challenge === "shooting" && (
+                <div
+                  className="absolute top-4 right-4 bg-card/90 backdrop-blur-sm border border-primary p-3 min-w-[160px] z-20"
+                  style={{ boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)" }}
+                >
                   <div className="code-font text-xs space-y-2">
                     <div className="flex justify-between">
                       <span className="text-[#A8D8FF]">TIME</span>
-                      <span style={{ color: getTimeColor() }}>{formatTime(time)}</span>
+                      <span style={{ color: getTimeColor() }}>
+                        {formatTime(challengeTime)}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#A8D8FF]">HITS</span>
-                      <span className="text-white">{hits}</span>
-                    </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-[#A8D8FF]">SCORE</span>
-                      <span className="text-white">{score}</span>
+                      <div className="relative flex items-center justify-end">
+                        <span className="text-white">{challengeScore}</span>
+                        <div className="absolute right-full mr-2 pointer-events-none" style={{ width: "52px" }}>
+                          <AnimatePresence>
+                            {hitPops.map((pop) => (
+                              <motion.span
+                                key={pop.id}
+                                className="absolute right-0 code-font text-[10px] font-bold whitespace-nowrap"
+                                style={{ color: "#4ade80", textShadow: "0 0 6px #4ade80" }}
+                                initial={{ opacity: 1, y: 0 }}
+                                animate={{ opacity: 0, y: -28 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 1.1, ease: "easeOut" }}
+                                onAnimationComplete={() =>
+                                  setHitPops((prev) => prev.filter((p) => p.id !== pop.id))
+                                }
+                              >
+                                HIT +10
+                              </motion.span>
+                            ))}
+                          </AnimatePresence>
+                        </div>
+                      </div>
                     </div>
+                    {challengeDone && (
+                      <div className="mt-2 text-center text-[#00CFFF] text-xs uppercase tracking-wider">
+                        COMPLETE!
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Connection status for multiplayer */}
-              {mode === "multiplayer" && (
-                <div
-                  className="absolute bottom-4 left-4 bg-card/90 backdrop-blur-sm border border-primary px-3 py-2 z-20 flex items-center gap-2"
-                  style={{
-                    boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
-                  }}
-                >
-                  <motion.div
-                    className="w-2 h-2 rounded-full bg-primary"
-                    animate={{ opacity: [1, 0.5, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                  <span className="code-font text-xs text-primary uppercase tracking-wider">
-                    {isRunning ? "CONNECTED" : "WAITING FOR OPPONENT..."}
-                  </span>
                 </div>
               )}
             </div>

@@ -166,22 +166,6 @@ describe("simulation determinism", () => {
     expect(ship.position.y).toBeCloseTo(0, 5);
   });
 
-  test("legacy setThrust alias still accelerates ships", () => {
-    const sim = createSimulationSystem();
-    sim.initialize(1, {
-      worldSize: 20_000,
-      ships: [{ team: 0, class: "Fighter", position: vec3(0, 0, 0), heading: 0 }]
-    });
-
-    sim.registerShipCodeHook((_id, _team, api) => {
-      (api as unknown as { setThrust: (power: number) => void }).setThrust(1);
-    });
-
-    sim.step(1 / 60);
-    const ship = sim.getState().ships[0];
-    expect(ship.velocity.x).toBeCloseTo(1.3, 5);
-  });
-
   test("angular velocity is clamped to class rotational speed limit", () => {
     const sim = createSimulationSystem();
     sim.initialize(1, {

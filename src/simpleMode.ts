@@ -6,7 +6,7 @@ import type { SimulationStateSnapshot, WorldConfig, ShipClass } from "./contract
  * The simulation must be initialized with createTargetChallengeConfig() so that
  * target ships (team 1) are present in the world.
  */
-export function createTargetChallange() {
+export function createTargetChallenge() {
   let score = 0
   let time = 60
   let done = false

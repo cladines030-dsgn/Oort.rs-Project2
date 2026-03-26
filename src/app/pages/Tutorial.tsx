@@ -12,8 +12,8 @@ const lessons = [
     title: "Basic Movement",
     difficulty: "Beginner",
     description: "Learn to activate your ship's thrusters and navigate through space.",
-    objectives: ["Activate engines with setThrust()", "Rotate the ship with setTorque()", "Reach the target waypoint"],
-    snippet: `function tick() {\n  // Point toward target and thrust\n  ship.turnTowards(target.position);\n  ship.setThrust(1.0);\n}`
+    objectives: ["Activate engines with thrust()", "Rotate the ship with turn()", "Reach the target waypoint"],
+    snippet: `function update(ship) {\n  // Fly toward the target waypoint\n  ship.moveTo(target.position.x, target.position.y);\n}`
   },
   {
     id: 2,
@@ -21,7 +21,7 @@ const lessons = [
     difficulty: "Beginner",
     description: "Use your radar system to detect and track enemy ships.",
     objectives: ["Scan for nearby hostiles with radar.scan()", "Track target position each tick", "Maintain visual contact during pursuit"],
-    snippet: `function tick() {\n  const enemies = radar.scan();\n  if (enemies.length > 0) {\n    const target = enemies[0];\n    ship.turnTowards(target.position);\n  }\n}`
+    snippet: `function update(ship) {\n  // Rotate while holding position for better situational awareness\n  ship.brake(1.0);\n  ship.turn(0.6);\n}`
   },
   {
     id: 3,
@@ -29,7 +29,7 @@ const lessons = [
     difficulty: "Intermediate",
     description: "Engage enemy ships using your weapons systems.",
     objectives: ["Fire weapons with ship.fire()", "Lead your shots for moving targets", "Manage reload cooldowns"],
-    snippet: `function tick() {\n  if (radar.hasTarget()) {\n    const t = radar.getClosest();\n    ship.turnTowards(t.position);\n    if (ship.canFire()) {\n      ship.fire();\n    }\n  }\n}`
+    snippet: `function update(ship) {\n  ship.turn(1.0);\n  if (ship.reloadTicks(0) === 0) {\n    ship.fire(0);\n  }\n}`
   },
   {
     id: 4,

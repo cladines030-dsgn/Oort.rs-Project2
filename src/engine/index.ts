@@ -60,7 +60,9 @@ export function createEngine(
     if (challenge?.isFinished()) {
       running = false
       scheduler.cancelAnimationFrame(rafId)
-      dependencies.ui.updateStatus(`Challenge complete! Score: ${challenge.getScore()}`)
+      dependencies.ui.updateStatus(
+        challenge.getCompletionStatus?.() ?? `Challenge complete! Score: ${challenge.getScore()}`
+      )
       return
     }
 
@@ -81,8 +83,12 @@ export function createEngine(
       const source = dependencies.editor.getProgramSource()
       dependencies.sandbox.initialize(source)
       dependencies.simulation.registerShipCodeHook((shipId: number, team: number, api: ShipCommandsApi) => {
-        if (team !== 0) return
-        dependencies.sandbox.execute(shipId, team, api.currentTick(), api)
+        if (team === 0) {
+          dependencies.sandbox.execute(shipId, team, api.currentTick(), api)
+          return
+        }
+
+        challenge?.controlShip?.(shipId, team, api)
       })
 
       currentState = dependencies.simulation.getState()

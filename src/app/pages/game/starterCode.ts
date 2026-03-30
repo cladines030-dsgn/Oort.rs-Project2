@@ -1,3 +1,5 @@
+import { OBSTACLE_COURSES, resolveObstacleCourseId } from "../../../simpleMode";
+
 const TUTORIAL_LESSON_STARTER_CODE: Record<string, string> = {
   "1": `// Tutorial 1: Basic Movement
 // update(ship) runs 60 times per second.
@@ -86,9 +88,81 @@ function update(ship) {
   }
 }`;
 
+const DEFENSE_STARTER_CODE = `// Challenge: Perimeter Defense
+// Goal: keep the command node at the center safe until the timer expires.
+
+const patrolPoints = [
+  { x: -2800, y: -400 },
+  { x: 0, y: 2600 },
+  { x: 2800, y: -400 },
+  { x: 0, y: -2600 }
+];
+
+let patrolIndex = 0;
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function update(ship) {
+  const target = patrolPoints[patrolIndex];
+  const position = ship.position();
+
+  if (distance(position, target) < 350) {
+    patrolIndex = (patrolIndex + 1) % patrolPoints.length;
+  }
+
+  const nextTarget = patrolPoints[patrolIndex];
+  ship.moveTo(nextTarget.x, nextTarget.y);
+
+  // Keep your nose hot while crossing the center lane.
+  ship.turn(0.35);
+
+  if (distance(position, { x: 0, y: 0 }) < 2200 && ship.reloadTicks(0) === 0) {
+    ship.fire(0);
+  }
+}`;
+
+function formatWaypointBlock(points: ReadonlyArray<{ x: number; y: number }>) {
+  return points.map((point) => `  { x: ${point.x}, y: ${point.y} }`).join(",\n");
+}
+
+function createObstacleStarterCode(course?: string) {
+  const resolvedCourse = resolveObstacleCourseId(course);
+  const courseDef = OBSTACLE_COURSES[resolvedCourse];
+
+  return `// Challenge: ${courseDef.label}
+// Goal: clear each gate in order and stay outside the hazard halos.
+
+const waypoints = [
+${formatWaypointBlock(courseDef.checkpoints)}
+];
+
+let waypointIndex = 0;
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function update(ship) {
+  const position = ship.position();
+  const waypoint = waypoints[Math.min(waypointIndex, waypoints.length - 1)];
+
+  if (distance(position, waypoint) < 320 && waypointIndex < waypoints.length - 1) {
+    waypointIndex += 1;
+  }
+
+  const nextWaypoint = waypoints[Math.min(waypointIndex, waypoints.length - 1)];
+  ship.moveTo(nextWaypoint.x, nextWaypoint.y);
+
+  // Bleed speed before the tighter transitions.
+  if (distance(position, nextWaypoint) < 900) {
+    ship.brake(0.4);
+  }
+}`;
+}
+
 const CHALLENGE_STARTER_CODE: Record<string, string> = {
-  // Challenge-specific templates live here.
-  // Add new keys as scenarios are implemented (defense, obstacle, etc).
   shooting: `// Challenge: Target Practice
 // Goal: Destroy as many static targets as possible before time runs out.
 
@@ -101,20 +175,7 @@ function update(ship) {
     ship.fire(0);
   }
 }`,
-  defense: `// Challenge: Defense (starter placeholder)
-// Tip: Keep your ship between threats and the protected zone.
-
-function update(ship) {
-  // TODO: Move to patrol position.
-  // TODO: Prioritize nearest threat.
-}`,
-  obstacle: `// Challenge: Obstacle Course (starter placeholder)
-// Tip: Balance thrust and turning to avoid collisions.
-
-function update(ship) {
-  // TODO: Steer toward checkpoints.
-  // TODO: Slow down before tight turns.
-}`,
+  defense: DEFENSE_STARTER_CODE,
   default: `// Challenge starter
 // Scenario-specific starting code can be added in CHALLENGE_STARTER_CODE.
 
@@ -125,16 +186,25 @@ function update(ship) {
 
 export const CHALLENGE_DISPLAY_NAMES: Record<string, string> = {
   shooting: "Target Practice",
-  defense: "Defense",
+  defense: "Perimeter Defense",
   obstacle: "Obstacle Course"
 };
 
-export function getStarterCodeForScenario(mode: string, challenge: string, lesson: string): string {
+export function getStarterCodeForScenario(
+  mode: string,
+  challenge: string,
+  lesson: string,
+  course?: string
+): string {
   if (mode === "tutorial") {
     return TUTORIAL_LESSON_STARTER_CODE[lesson] ?? TUTORIAL_LESSON_STARTER_CODE.default;
   }
 
   if (mode === "challenges") {
+    if (challenge === "obstacle") {
+      return createObstacleStarterCode(course);
+    }
+
     return CHALLENGE_STARTER_CODE[challenge] ?? CHALLENGE_STARTER_CODE.default;
   }
 

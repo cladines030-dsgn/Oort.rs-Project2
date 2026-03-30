@@ -3,6 +3,11 @@ type CommandInputPanelProps = {
   code: string;
   status: string;
   isRunning: boolean;
+  scenarioTitle?: string;
+  scenarioObjective?: string;
+  courseOptions?: ReadonlyArray<{ id: string; label: string }>;
+  currentCourse?: string;
+  onSelectCourse?: (courseId: string) => void;
   onCodeChange: (code: string) => void;
   onToggleRun: () => void;
 };
@@ -12,6 +17,11 @@ export function CommandInputPanel({
   code,
   status,
   isRunning,
+  scenarioTitle,
+  scenarioObjective,
+  courseOptions,
+  currentCourse,
+  onSelectCourse,
   onCodeChange,
   onToggleRun
 }: CommandInputPanelProps) {
@@ -35,6 +45,50 @@ export function CommandInputPanel({
           )}
         </div>
       </div>
+
+      {(scenarioTitle || scenarioObjective || courseOptions?.length) && (
+        <div className="border-b border-primary/20 px-6 py-4 bg-card/40 backdrop-blur-sm space-y-3">
+          {scenarioTitle && (
+            <div>
+              <p className="text-primary uppercase tracking-[0.24em] code-font text-[11px]">
+                SCENARIO
+              </p>
+              <h4 className="mt-1 text-white header-font uppercase tracking-wide">{scenarioTitle}</h4>
+            </div>
+          )}
+
+          {scenarioObjective && (
+            <p className="text-[#A8D8FF] text-xs code-font leading-6">{scenarioObjective}</p>
+          )}
+
+          {courseOptions && courseOptions.length > 0 && onSelectCourse && (
+            <div className="space-y-2">
+              <p className="text-primary uppercase tracking-[0.24em] code-font text-[11px]">
+                COURSES
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {courseOptions.map((course) => {
+                  const isActive = currentCourse === course.id;
+
+                  return (
+                    <button
+                      key={course.id}
+                      onClick={() => onSelectCourse(course.id)}
+                      className={`px-3 py-2 border code-font text-[11px] uppercase tracking-[0.22em] transition-colors ${
+                        isActive
+                          ? "bg-primary text-black border-primary"
+                          : "bg-transparent text-[#A8D8FF] border-primary/40 hover:border-primary hover:text-primary"
+                      }`}
+                    >
+                      {course.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 p-6 bg-[#0A1020] overflow-auto">
         <textarea

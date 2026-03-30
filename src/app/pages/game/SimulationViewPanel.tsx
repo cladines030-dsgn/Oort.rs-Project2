@@ -1,42 +1,24 @@
-import { AnimatePresence, motion } from "motion/react";
 import type { RefObject } from "react";
-
-type HitPop = { id: number };
+import type { ChallengeHudState } from "../../../simpleMode";
 
 type SimulationViewPanelProps = {
   mode: string;
-  challenge: string;
   modeName: string;
-  isPlaceholderChallenge: boolean;
   canvasRef: RefObject<HTMLCanvasElement | null>;
-  challengeScore: number;
-  challengeTime: number;
-  challengeDone: boolean;
-  hitPops: HitPop[];
-  onHitPopAnimationComplete: (id: number) => void;
+  challengeHud: ChallengeHudState | null;
 };
 
-function formatTime(seconds: number) {
-  const secs = Math.max(0, Math.floor(seconds));
-  const mins = Math.floor(secs / 60);
-  return `${mins}:${String(secs % 60).padStart(2, "0")}`;
-}
-
-function getTimeColor(seconds: number) {
-  return seconds < 15 ? "#FF4B4B" : "#00CFFF";
+function getToneColor(tone?: "default" | "danger" | "success") {
+  if (tone === "danger") return "#FF6B6B";
+  if (tone === "success") return "#4ADE80";
+  return "#00CFFF";
 }
 
 export function SimulationViewPanel({
   mode,
-  challenge,
   modeName,
-  isPlaceholderChallenge,
   canvasRef,
-  challengeScore,
-  challengeTime,
-  challengeDone,
-  hitPops,
-  onHitPopAnimationComplete
+  challengeHud
 }: SimulationViewPanelProps) {
   return (
     <div className="w-1/2 flex flex-col">
@@ -50,79 +32,40 @@ export function SimulationViewPanel({
       </div>
 
       <div className="flex-1 relative bg-black overflow-hidden">
-        {isPlaceholderChallenge ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-6">
-            <div
-              className="text-primary opacity-30"
-              style={{ fontSize: "64px", lineHeight: 1 }}
-            >
-              ⬡
-            </div>
-            <div className="text-center">
-              <h2
-                className="uppercase tracking-widest header-font mb-3"
-                style={{ color: "#00CFFF" }}
-              >
-                {modeName} Challenge
-              </h2>
-              <p className="code-font text-sm text-[#A8D8FF]/60 max-w-sm">
-                Coming soon - this challenge is under construction.
-              </p>
-            </div>
-            <div
-              className="px-6 py-2 border border-primary/40 code-font text-xs uppercase tracking-widest text-primary/60"
-              style={{ boxShadow: "0 0 10px rgba(0, 207, 255, 0.1)" }}
-            >
-              [ PLACEHOLDER ]
-            </div>
-          </div>
-        ) : (
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full"
-            style={{ display: "block" }}
-          />
-        )}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ display: "block" }}
+        />
 
-        {mode === "challenges" && challenge === "shooting" && (
+        {mode === "challenges" && challengeHud && (
           <div
             className="absolute top-4 right-4 bg-card/90 backdrop-blur-sm border border-primary p-3 min-w-[160px] z-20"
             style={{ boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)" }}
           >
-            <div className="code-font text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-[#A8D8FF]">TIME</span>
-                <span style={{ color: getTimeColor(challengeTime) }}>
-                  {formatTime(challengeTime)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[#A8D8FF]">SCORE</span>
-                <div className="relative flex items-center justify-end">
-                  <span className="text-white">{challengeScore}</span>
-                  <div className="absolute right-full mr-2 pointer-events-none" style={{ width: "52px" }}>
-                    <AnimatePresence>
-                      {hitPops.map((pop) => (
-                        <motion.span
-                          key={pop.id}
-                          className="absolute right-0 code-font text-[10px] font-bold whitespace-nowrap"
-                          style={{ color: "#4ade80", textShadow: "0 0 6px #4ade80" }}
-                          initial={{ opacity: 1, y: 0 }}
-                          animate={{ opacity: 0, y: -28 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 1.1, ease: "easeOut" }}
-                          onAnimationComplete={() => onHitPopAnimationComplete(pop.id)}
-                        >
-                          HIT +10
-                        </motion.span>
-                      ))}
-                    </AnimatePresence>
-                  </div>
+            <div className="code-font text-xs space-y-3 max-w-[260px]">
+              <div>
+                <div className="text-primary uppercase tracking-[0.24em] text-[10px]">
+                  {challengeHud.title}
                 </div>
+                <p className="mt-2 text-[#A8D8FF] leading-5">{challengeHud.objective}</p>
               </div>
-              {challengeDone && (
-                <div className="mt-2 text-center text-[#00CFFF] text-xs uppercase tracking-wider">
-                  COMPLETE!
+
+              <div className="space-y-2">
+                {challengeHud.stats.map((stat) => (
+                  <div key={stat.label} className="flex justify-between gap-4">
+                    <span className="text-[#A8D8FF]">{stat.label}</span>
+                    <span style={{ color: getToneColor(stat.tone) }}>{stat.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {challengeHud.completionLabel && (
+                <div
+                  className="mt-2 text-center text-xs uppercase tracking-wider"
+                  style={{ color: getToneColor(challengeHud.completionTone) }}
+                >
+                  {challengeHud.completionLabel}
                 </div>
               )}
             </div>

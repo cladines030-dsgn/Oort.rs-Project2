@@ -6,6 +6,7 @@ import { SpaceBackground } from "../components/SpaceBackground";
 import { ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router";
 import { motion } from "motion/react";
+import { OBSTACLE_COURSE_OPTIONS } from "../../simpleMode";
 
 export function Challenges() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -24,8 +25,13 @@ export function Challenges() {
       "Your first tutorial mission teaches fundamental ship control. Learn to activate engines, rotate your ship, and fire weapons. Master the radar system to detect enemies and coordinate fleet movements. Each lesson builds your skills for more complex battles."
   };
 
-  const handleChallengeClick = (mode: string) => {
-    navigate(`/game?mode=challenges&challenge=${mode}`);
+  const handleChallengeClick = (mode: string, options?: Record<string, string>) => {
+    const params = new URLSearchParams({
+      mode: "challenges",
+      challenge: mode,
+      ...options
+    });
+    navigate(`/game?${params.toString()}`);
   };
 
   return (
@@ -90,15 +96,25 @@ export function Challenges() {
                 >
                   Defense
                 </button>
-                <button
-                  onClick={() => handleChallengeClick("obstacle")}
-                  className="w-full py-3 px-4 bg-primary/10 text-primary border border-primary hover:bg-primary hover:text-black transition-all code-font text-sm uppercase tracking-wider"
-                  style={{
-                    boxShadow: "0 0 10px rgba(0, 207, 255, 0.2)"
-                  }}
-                >
-                  Obstacle Course
-                </button>
+                <div className="border border-primary/20 p-3 bg-primary/5">
+                  <p className="mb-3 text-[#A8D8FF] code-font text-xs uppercase tracking-[0.3em]">
+                    Obstacle Courses
+                  </p>
+                  <div className="space-y-2">
+                    {OBSTACLE_COURSE_OPTIONS.map((course) => (
+                      <button
+                        key={course.id}
+                        onClick={() => handleChallengeClick("obstacle", { course: course.id })}
+                        className="w-full py-3 px-4 bg-primary/10 text-primary border border-primary/60 hover:bg-primary hover:text-black transition-all code-font text-sm uppercase tracking-wider"
+                        style={{
+                          boxShadow: "0 0 10px rgba(0, 207, 255, 0.14)"
+                        }}
+                      >
+                        {course.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <button
                   onClick={() => handleChallengeClick("shooting")}
                   className="w-full py-3 px-4 bg-primary/10 text-primary border border-primary hover:bg-primary hover:text-black transition-all code-font text-sm uppercase tracking-wider"

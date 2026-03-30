@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Header } from "../components/Header";
 import { SpaceBackground } from "../components/SpaceBackground";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { CommandInputPanel } from "./game/CommandInputPanel";
 import { SimulationViewPanel } from "./game/SimulationViewPanel";
-import {
-  CHALLENGE_DISPLAY_NAMES,
-  getStarterCodeForScenario
-} from "./game/starterCode";
+import { getStarterCodeForScenario } from "./game/starterCode";
 import { createEngine } from "../../engine";
 import { createSimulationSystem } from "../../simulation";
 import { createCombatSystem } from "../../combat";
@@ -15,35 +12,42 @@ import { createEditorSystem } from "../../editor";
 import { createShipSandboxSystem } from "../../sandbox";
 import { createUiSystem } from "../../ui";
 import {
-  createTargetChallenge,
-  createTargetChallengeConfig
+  OBSTACLE_COURSE_OPTIONS,
+  createChallengeScenario,
+  getChallengeModeName,
+  getChallengeObjective,
+  getChallengePreviewHud,
+  resolveObstacleCourseId
 } from "../../simpleMode";
 import type { UiSystem, WorldConfig } from "../../contracts";
+import type { ChallengeHudState, ChallengeRuntime } from "../../simpleMode";
 
 const DEFAULT_SEED = 1234;
 
 export function Game() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const mode = searchParams.get("mode") || "tutorial";
   const challenge = searchParams.get("challenge") || "defense";
+  const course = resolveObstacleCourseId(searchParams.get("course") || undefined);
   const lesson = searchParams.get("lesson") || "1";
-  const scenarioKey = mode === "tutorial" ? `${mode}:${lesson}` : `${mode}:${challenge}`;
+  const scenarioKey =
+    mode === "tutorial"
+      ? `${mode}:${lesson}`
+      : `${mode}:${challenge}:${challenge === "obstacle" ? course : "default"}`;
 
-  const [code, setCode] = useState(() => getStarterCodeForScenario(mode, challenge, lesson));
+  const [code, setCode] = useState(() => getStarterCodeForScenario(mode, challenge, lesson, course));
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState("Ready");
-  const [challengeScore, setChallengeScore] = useState(0);
-  const [challengeTime, setChallengeTime] = useState(60);
-  const [challengeDone, setChallengeDone] = useState(false);
-  const [hitPops, setHitPops] = useState<{ id: number }[]>([]);
-  const hitPopIdRef = useRef(0);
+  const [challengeHud, setChallengeHud] = useState<ChallengeHudState | null>(() =>
+    mode === "challenges" ? getChallengePreviewHud(challenge, course) : null
+  );
 
-  // Refs — keep latest values that the engine needs without re-creating it
   const codeRef = useRef(code);
   const scenarioRef = useRef(scenarioKey);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ReturnType<typeof createEngine> | null>(null);
-  const challengeRef = useRef<ReturnType<typeof createTargetChallenge> | null>(null);
+  const challengeRef = useRef<ChallengeRuntime | null>(null);
 
   useEffect(() => {
     codeRef.current = code;
@@ -55,44 +59,41 @@ export function Game() {
 
     engineRef.current?.stop();
     setIsRunning(false);
-    setCode(getStarterCodeForScenario(mode, challenge, lesson));
+    challengeRef.current = null;
+    setCode(getStarterCodeForScenario(mode, challenge, lesson, course));
+    setChallengeHud(mode === "challenges" ? getChallengePreviewHud(challenge, course) : null);
     setStatus("Starter code loaded");
-  }, [mode, challenge, lesson, scenarioKey]);
+  }, [mode, challenge, lesson, course, scenarioKey]);
 
-  // Poll challenge score/time/hits while running (shooting mode only)
   useEffect(() => {
-    if (!isRunning || challenge !== "shooting") return;
+    if (!isRunning || mode !== "challenges") return;
+
     const interval = setInterval(() => {
       const ch = challengeRef.current;
       if (!ch) return;
-      setChallengeScore(ch.getScore());
-      setChallengeTime(ch.getTime());
-
-      const newHits = ch.flushHits();
-      if (newHits > 0) {
-        setHitPops((prev) => {
-          const additions = Array.from({ length: newHits }, () => {
-            hitPopIdRef.current += 1;
-            return { id: hitPopIdRef.current };
-          });
-          return [...prev, ...additions];
-        });
-      }
+      setChallengeHud(ch.getHudState());
 
       if (ch.isFinished()) {
-        setChallengeDone(true);
         setIsRunning(false);
+        setStatus(ch.getCompletionStatus?.() ?? "Challenge complete");
       }
     }, 100);
-    return () => clearInterval(interval);
-  }, [isRunning, challenge]);
 
-  // Stop engine if component unmounts while running
+    return () => clearInterval(interval);
+  }, [isRunning, mode]);
+
   useEffect(() => {
     return () => {
       engineRef.current?.stop();
     };
   }, []);
+
+  const handleSelectCourse = useCallback(
+    (nextCourse: string) => {
+      navigate(`/game?mode=challenges&challenge=obstacle&course=${nextCourse}`);
+    },
+    [navigate]
+  );
 
   const handleToggleRun = useCallback(() => {
     if (isRunning) {
@@ -115,19 +116,18 @@ export function Game() {
     freshEditor.initialize();
     freshEditor.setProgramSource(codeRef.current);
 
-    let challengeMode: ReturnType<typeof createTargetChallenge> | null = null;
+    let challengeMode: ChallengeRuntime | null = null;
     let worldConfig: WorldConfig | undefined;
 
-    if (challenge === "shooting") {
-      const rng = { next: () => Math.random() };
-      const ch = createTargetChallenge();
-      challengeRef.current = ch;
-      challengeMode = ch;
-      worldConfig = createTargetChallengeConfig(rng);
-      setChallengeScore(0);
-      setChallengeTime(60);
-      setChallengeDone(false);
-      setHitPops([]);
+    if (mode === "challenges") {
+      const scenario = createChallengeScenario(challenge, course, DEFAULT_SEED);
+      challengeMode = scenario?.runtime ?? null;
+      worldConfig = scenario?.worldConfig;
+      challengeRef.current = challengeMode;
+      setChallengeHud(challengeMode?.getHudState() ?? getChallengePreviewHud(challenge, course));
+    } else {
+      challengeRef.current = null;
+      setChallengeHud(null);
     }
 
     const engine = createEngine({
@@ -143,18 +143,21 @@ export function Game() {
     engine.start(DEFAULT_SEED, worldConfig);
     setIsRunning(true);
     setStatus("Simulation running");
-  }, [isRunning, challenge]);
+  }, [isRunning, mode, challenge, course]);
 
   const getModeName = () => {
     if (mode === "challenges") {
-      return CHALLENGE_DISPLAY_NAMES[challenge] ?? challenge;
+      return getChallengeModeName(challenge, course);
     }
 
     return mode.charAt(0).toUpperCase() + mode.slice(1);
   };
-
-  const isPlaceholderChallenge =
-    mode === "challenges" && challenge !== "shooting";
+  const scenarioTitle = mode === "challenges" ? getModeName() : undefined;
+  const scenarioObjective = mode === "challenges" ? getChallengeObjective(challenge, course) : undefined;
+  const courseOptions =
+    mode === "challenges" && challenge === "obstacle"
+      ? OBSTACLE_COURSE_OPTIONS.map(({ id, label }) => ({ id, label }))
+      : undefined;
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -169,23 +172,20 @@ export function Game() {
             code={code}
             status={status}
             isRunning={isRunning}
+            scenarioTitle={scenarioTitle}
+            scenarioObjective={scenarioObjective}
+            courseOptions={courseOptions}
+            currentCourse={challenge === "obstacle" ? course : undefined}
+            onSelectCourse={courseOptions ? handleSelectCourse : undefined}
             onCodeChange={setCode}
             onToggleRun={handleToggleRun}
           />
 
           <SimulationViewPanel
             mode={mode}
-            challenge={challenge}
             modeName={getModeName()}
-            isPlaceholderChallenge={isPlaceholderChallenge}
             canvasRef={canvasRef}
-            challengeScore={challengeScore}
-            challengeTime={challengeTime}
-            challengeDone={challengeDone}
-            hitPops={hitPops}
-            onHitPopAnimationComplete={(id) =>
-              setHitPops((prev) => prev.filter((pop) => pop.id !== id))
-            }
+            challengeHud={challengeHud}
           />
         </div>
       </div>

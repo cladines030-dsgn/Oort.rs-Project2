@@ -251,6 +251,10 @@ export interface TargetChallengeMode {
   isFinished(): boolean;
   getScore(): number;
   getTime(): number;
+  /** Optional controller for non-player ships in scenario modes. */
+  controlShip?(shipId: number, team: number, api: ShipCommandsApi): void;
+  /** Optional summary used when the engine auto-stops a completed challenge. */
+  getCompletionStatus?(): string;
 }
 
 export interface EngineDependencies {

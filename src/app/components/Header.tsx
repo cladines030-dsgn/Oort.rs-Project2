@@ -45,19 +45,19 @@ export function Header() {
                 }}
               >
                 <Link
-                  to="/challenges?mode=defense"
+                  to="/game?mode=challenges&challenge=defense"
                   className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors"
                 >
                   Defense
                 </Link>
                 <Link
-                  to="/challenges?mode=obstacle"
+                  to="/game?mode=challenges&challenge=obstacle"
                   className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
                 >
                   Obstacle Course
                 </Link>
                 <Link
-                  to="/challenges?mode=shooting"
+                  to="/game?mode=challenges&challenge=shooting"
                   className="block px-4 py-2 text-[#A8D8FF] hover:bg-primary/10 hover:text-primary transition-colors border-t border-primary/20"
                 >
                   Target Practice

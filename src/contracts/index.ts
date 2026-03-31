@@ -85,6 +85,7 @@ export interface ProjectileSnapshot {
   readonly position: Vec3;
   readonly velocity: Vec3;
   readonly traveledDistance: number;
+  readonly collisionRadius: number;
 }
 
 /** Combat event logged during this tick (hit, miss, kill, etc.) */
@@ -93,6 +94,7 @@ export interface CombatEvent {
   readonly type: "fire" | "hit" | "kill";
   readonly attackerId: number;
   readonly targetId?: number;
+  readonly targetTeam?: number;
   readonly weaponIndex?: number;
 }
 
@@ -174,6 +176,8 @@ export interface ShipConfig {
   position: Vec3;
   /** Initial heading in radians. */
   heading: number;
+  /** Optional custom collision radius in metres for scenario-specific tuning. */
+  collisionRadius?: number;
 }
 
 /** Full configuration used to reproducibly initialize a world from a seed. */

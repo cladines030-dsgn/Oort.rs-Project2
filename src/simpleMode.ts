@@ -93,7 +93,7 @@ export const OBSTACLE_COURSES: Record<ObstacleCourseId, ObstacleCourseDefinition
     label: "Asteroid Slalom",
     description: "Fast alternating gates with large static hazards.",
     objective: "Clear every gate in order and keep away from the hazard halos.",
-    timeLimitSeconds: 50,
+    timeLimitSeconds: 80,
     maxContacts: 5,
     worldSize: 24_000,
     start: { x: -7600, y: 0 },
@@ -323,7 +323,8 @@ export function createTargetChallenge(): ChallengeRuntime {
 
       for (const event of state.combatEvents) {
         const targetTeam =
-          typeof event.targetId === "number" ? shipTeamById.get(event.targetId) : undefined
+          event.targetTeam ??
+          (typeof event.targetId === "number" ? shipTeamById.get(event.targetId) : undefined)
         if (targetTeam !== 1) continue
 
         if (event.type === "hit") {
@@ -372,6 +373,7 @@ export function createTargetChallengeConfig(seed = 1234, targetCount = 8): World
   const targets = Array.from({ length: targetCount }, (_, index) => ({
     team: 1,
     class: "Fighter" as ShipClass,
+    collisionRadius: 110,
     position: {
       x: Math.cos((index / targetCount) * Math.PI * 2) * (baseRadius + next() * radiusJitter),
       y: Math.sin((index / targetCount) * Math.PI * 2) * (baseRadius + next() * radiusJitter),
@@ -434,7 +436,8 @@ function createDefenseChallenge(): ChallengeRuntime {
       const shipTeamById = new Map(state.ships.map((ship) => [ship.id, ship.team]))
       for (const event of state.combatEvents) {
         const targetTeam =
-          typeof event.targetId === "number" ? shipTeamById.get(event.targetId) : undefined
+          event.targetTeam ??
+          (typeof event.targetId === "number" ? shipTeamById.get(event.targetId) : undefined)
         if (event.type === "kill" && targetTeam === 1) {
           destroyedThreats += 1
         }

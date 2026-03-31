@@ -14,7 +14,7 @@ export function Header() {
       >
         {/* Wordmark */}
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <span className="header-font tracking-wider text-white">Oort.rs</span>
+          <span className="header-font tracking-wider text-white">Oort.ts</span>
         </Link>
 
         {/* Navigation */}
@@ -66,18 +66,6 @@ export function Header() {
             </div>
           </div>
 
-          <Link
-            to="/multiplayer"
-            className="text-[#A8D8FF] hover:text-primary transition-colors relative group"
-          >
-            Multi-Play
-            <span
-              className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full"
-              style={{
-                boxShadow: "0 0 5px #00CFFF"
-              }}
-            />
-          </Link>
         </nav>
       </div>
     </header>

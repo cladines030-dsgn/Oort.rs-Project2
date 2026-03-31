@@ -209,12 +209,29 @@ export function createUiSystem(): UiSystem {
 
     if (frame.state.tick !== lastFxTick) {
       const shipById = new Map(ships.map((ship) => [ship.id, ship]));
+      const previousShipById = new Map(
+        frame.previousState.ships.map((ship) => [
+          ship.id,
+          {
+            id: ship.id,
+            team: ship.team,
+            class: ship.class,
+            x: ship.position.x,
+            y: ship.position.y,
+            heading: ship.heading,
+            health: ship.health
+          }
+        ])
+      );
       for (const event of frame.state.combatEvents) {
         if (event.type !== "hit" && event.type !== "kill") {
           continue;
         }
-        const target = event.targetId !== undefined ? shipById.get(event.targetId) : undefined;
-        const attacker = shipById.get(event.attackerId);
+        const target =
+          event.targetId !== undefined
+            ? shipById.get(event.targetId) ?? previousShipById.get(event.targetId)
+            : undefined;
+        const attacker = shipById.get(event.attackerId) ?? previousShipById.get(event.attackerId);
         const source = target ?? attacker;
         if (!source) {
           continue;
@@ -355,7 +372,7 @@ export function createUiSystem(): UiSystem {
       headingRow.className = "heading-row";
 
       const title = document.createElement("h1");
-      title.textContent = "oort.tsx Battle Lab";
+      title.textContent = "Oort.ts Battle Lab";
 
       statusEl = document.createElement("p");
       statusEl.className = "status";

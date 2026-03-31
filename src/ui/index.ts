@@ -45,6 +45,7 @@ interface InterpolatedProjectile {
   weaponType: string;
   x: number;
   y: number;
+  collisionRadius: number;
 }
 
 interface ExplosionFx {
@@ -139,7 +140,8 @@ function interpolateProjectiles(frame: UiRenderFrame): InterpolatedProjectile[] 
         id: projectile.id,
         weaponType: projectile.weaponType,
         x: projectile.position.x,
-        y: projectile.position.y
+        y: projectile.position.y,
+        collisionRadius: projectile.collisionRadius
       };
     }
 
@@ -147,7 +149,8 @@ function interpolateProjectiles(frame: UiRenderFrame): InterpolatedProjectile[] 
       id: projectile.id,
       weaponType: projectile.weaponType,
       x: lerp(prev.position.x, projectile.position.x, alpha),
-      y: lerp(prev.position.y, projectile.position.y, alpha)
+      y: lerp(prev.position.y, projectile.position.y, alpha),
+      collisionRadius: projectile.collisionRadius
     };
   });
 }
@@ -209,12 +212,29 @@ export function createUiSystem(): UiSystem {
 
     if (frame.state.tick !== lastFxTick) {
       const shipById = new Map(ships.map((ship) => [ship.id, ship]));
+      const previousShipById = new Map(
+        frame.previousState.ships.map((ship) => [
+          ship.id,
+          {
+            id: ship.id,
+            team: ship.team,
+            class: ship.class,
+            x: ship.position.x,
+            y: ship.position.y,
+            heading: ship.heading,
+            health: ship.health
+          }
+        ])
+      );
       for (const event of frame.state.combatEvents) {
         if (event.type !== "hit" && event.type !== "kill") {
           continue;
         }
-        const target = event.targetId !== undefined ? shipById.get(event.targetId) : undefined;
-        const attacker = shipById.get(event.attackerId);
+        const target =
+          event.targetId !== undefined
+            ? shipById.get(event.targetId) ?? previousShipById.get(event.targetId)
+            : undefined;
+        const attacker = shipById.get(event.attackerId) ?? previousShipById.get(event.attackerId);
         const source = target ?? attacker;
         if (!source) {
           continue;
@@ -279,7 +299,7 @@ export function createUiSystem(): UiSystem {
 
     for (const projectile of projectiles) {
       const screen = worldToScreen(projectile.x, projectile.y);
-      const radius = 2.5;
+      const radius = Math.max(1.2, projectile.collisionRadius * pxPerMeter);
       ctx.fillStyle = PROJECTILE_COLORS[projectile.weaponType] ?? "#ffffff";
       ctx.beginPath();
       ctx.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
@@ -355,7 +375,7 @@ export function createUiSystem(): UiSystem {
       headingRow.className = "heading-row";
 
       const title = document.createElement("h1");
-      title.textContent = "oort.tsx Battle Lab";
+      title.textContent = "Oort.ts Battle Lab";
 
       statusEl = document.createElement("p");
       statusEl.className = "status";

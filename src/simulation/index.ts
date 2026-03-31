@@ -189,6 +189,8 @@ interface ShipEntity {
   health: number;
   /** Remaining delta-v in m/s. Infinity for crewed ships. */
   fuel: number;
+  /** Collision radius in metres for projectile hit tests. */
+  collisionRadius: number;
   pending: PendingCommands;
   /** Cooldown timer in seconds for each weapon. 0 means ready to fire. */
   weaponCooldowns: number[];
@@ -217,6 +219,14 @@ interface WorldState {
   combatEvents: CombatEvent[];
   worldSize: number;
 }
+
+const DEFAULT_SHIP_COLLISION_RADIUS_BY_CLASS: Record<ShipClass, number> = {
+  Fighter: 20,
+  Frigate: 32,
+  Cruiser: 44,
+  Missile: 12,
+  Torpedo: 14
+};
 
 // ---------------------------------------------------------------------------
 // Deterministic LCG RNG (Numerical Recipes constants).
@@ -263,6 +273,36 @@ function freshPending(): PendingCommands {
   return { acceleration: null, turn: null, torque: null, fireCommands: [] };
 }
 
+function segmentDistanceSquaredToPointXY(start: Vec3, end: Vec3, point: Vec3): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= Number.EPSILON) {
+    const sx = point.x - start.x;
+    const sy = point.y - start.y;
+    return sx * sx + sy * sy;
+  }
+
+  const tRaw = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq;
+  const t = clamp(tRaw, 0, 1);
+  const closestX = start.x + dx * t;
+  const closestY = start.y + dy * t;
+  const diffX = point.x - closestX;
+  const diffY = point.y - closestY;
+  return diffX * diffX + diffY * diffY;
+}
+
+function sweptDistanceSquaredBetweenPointsXY(
+  aStart: Vec3,
+  aEnd: Vec3,
+  bStart: Vec3,
+  bEnd: Vec3
+): number {
+  const relStart = vec3(aStart.x - bStart.x, aStart.y - bStart.y, 0);
+  const relEnd = vec3(aEnd.x - bEnd.x, aEnd.y - bEnd.y, 0);
+  return segmentDistanceSquaredToPointXY(relStart, relEnd, VEC3_ZERO);
+}
+
 function makeShipEntity(id: number, cfg: ShipConfig): ShipEntity {
   const stats = SHIP_CLASS_STATS[cfg.class];
   return {
@@ -275,6 +315,7 @@ function makeShipEntity(id: number, cfg: ShipConfig): ShipEntity {
     angularVelocity: 0,
     health: stats.maxHealth,
     fuel: stats.maxFuel ?? Infinity,
+    collisionRadius: cfg.collisionRadius ?? DEFAULT_SHIP_COLLISION_RADIUS_BY_CLASS[cfg.class],
     pending: freshPending(),
     weaponCooldowns: stats.weapons.map(() => 0)
   };
@@ -307,7 +348,8 @@ function buildSnapshot(world: WorldState): SimulationStateSnapshot {
       weaponType: p.weaponType,
       position: p.position,
       velocity: p.velocity,
-      traveledDistance: p.traveledDistance
+      traveledDistance: p.traveledDistance,
+      collisionRadius: p.collisionRadius
     })),
     combatEvents: world.combatEvents
   };
@@ -603,6 +645,7 @@ export function createSimulationSystem(): SimulationSystem {
       }
 
       // 4. Physics update — apply buffered commands and integrate motion for ships.
+      const previousShipPositionById = new Map(world.ships.map((ship) => [ship.id, ship.position]));
       for (const ship of world.ships) {
         if (ship.health > 0) {
           physicsUpdate(ship, deltaSeconds);
@@ -612,6 +655,7 @@ export function createSimulationSystem(): SimulationSystem {
       // 5. Update projectiles and check for collisions.
       const projectilesToRemove: number[] = [];
       for (const projectile of world.projectiles) {
+        const previousPosition = projectile.position;
         projectile.position = vec3Add(
           projectile.position,
           vec3Scale(projectile.velocity, deltaSeconds)
@@ -626,11 +670,15 @@ export function createSimulationSystem(): SimulationSystem {
         // Check collision with enemy ships.
         for (const ship of world.ships) {
           if (ship.health > 0 && ship.team !== projectile.team) {
-            const dist = Math.hypot(
-              ship.position.x - projectile.position.x,
-              ship.position.y - projectile.position.y
+            const hitRadius = projectile.collisionRadius + ship.collisionRadius;
+            const previousShipPosition = previousShipPositionById.get(ship.id) ?? ship.position;
+            const distSq = sweptDistanceSquaredBetweenPointsXY(
+              previousPosition,
+              projectile.position,
+              previousShipPosition,
+              ship.position
             );
-            if (dist <= projectile.collisionRadius + 20) {
+            if (distSq <= hitRadius * hitRadius) {
               // Rough collision radius for ships, TODO: make more sophisticated.
               ship.health = Math.max(0, ship.health - projectile.damagePerHit);
               projectilesToRemove.push(projectile.id);
@@ -638,14 +686,16 @@ export function createSimulationSystem(): SimulationSystem {
                 tick: world.tick,
                 type: "hit",
                 attackerId: projectile.firedBy,
-                targetId: ship.id
+                targetId: ship.id,
+                targetTeam: ship.team
               });
               if (ship.health <= 0) {
                 world.combatEvents.push({
                   tick: world.tick,
                   type: "kill",
                   attackerId: projectile.firedBy,
-                  targetId: ship.id
+                  targetId: ship.id,
+                  targetTeam: ship.team
                 });
               }
               break;
@@ -654,8 +704,9 @@ export function createSimulationSystem(): SimulationSystem {
         }
       }
 
-      // Remove expired projectiles.
+      // Remove expired projectiles and ships destroyed this tick.
       world.projectiles = world.projectiles.filter((p) => projectilesToRemove.indexOf(p.id) === -1);
+      world.ships = world.ships.filter((ship) => ship.health > 0);
 
       // 6. Advance deterministic RNG and tick counter.
       world.rngState = lcgNext(world.rngState);

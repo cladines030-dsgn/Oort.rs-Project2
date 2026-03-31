@@ -20,9 +20,5 @@ export const router = createBrowserRouter([
   {
     path: "/game",
     Component: Game
-  },
-  {
-    path: "/multiplayer",
-    Component: Game
   }
 ]);

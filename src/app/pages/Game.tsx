@@ -23,11 +23,13 @@ import type { UiSystem, WorldConfig } from "../../contracts";
 import type { ChallengeHudState, ChallengeRuntime } from "../../simpleMode";
 
 const DEFAULT_SEED = 1234;
+const SUPPORTED_GAME_MODES = new Set(["tutorial", "challenges"]);
 
 export function Game() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const mode = searchParams.get("mode") || "tutorial";
+  const requestedMode = searchParams.get("mode") || "tutorial";
+  const mode = SUPPORTED_GAME_MODES.has(requestedMode) ? requestedMode : "tutorial";
   const challenge = searchParams.get("challenge") || "defense";
   const course = resolveObstacleCourseId(searchParams.get("course") || undefined);
   const lesson = searchParams.get("lesson") || "1";

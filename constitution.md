@@ -1,10 +1,10 @@
-Project Name: oort.tsx
+Project Name: Oort.ts
 Version: 1.0
 Last Updated: 2026-03-09
 
 1. Purpose
 
-oort.tsx is a browser-based programming strategy simulator inspired by the capabilities of Oort.rs.
+Oort.ts is a browser-based programming strategy simulator.
 
 The project recreates the core gameplay mechanics of Oort while implementing the system entirely in JavaScript and web-native technologies rather than Rust.
 
@@ -405,7 +405,7 @@ browser APIs outside the game API
 
 16. Project Goals
 
-The goal of oort.tsx is to create:
+The goal of Oort.ts is to create:
 
 a programmable combat simulation
 
@@ -439,7 +439,7 @@ Extensibility
 
 If design decisions conflict, simplicity and clarity take priority.
 
-Oort.rs API reference:
+Oort.ts API reference:
 
 Oort expects your code to have a Ship type with a tick method. Each tutorial provides some starter code which includes this:
 

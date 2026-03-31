@@ -17,10 +17,10 @@ export function Home() {
   };
 
   const dropdownContent = {
-    "What is Oort.rs?":
-      "Oort.rs is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
+    "What is Oort.ts?":
+      "Oort.ts is a programming game where you control spaceships by writing TypeScript. Command everything from tiny missiles to massive cruisers. Your code runs in real-time simulations at 60 frames per second, managing engines, weapons, radar, and communications systems.",
     "How do I start?":
-      "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Target Practice. When ready, face real opponents in Multi-Play mode.",
+      "Begin your journey in the Tutorial to master basic ship control and combat tactics. Progress through Challenges to test your skills in specialized scenarios like Defense, Obstacle Course, and Target Practice.",
     "Your first mission":
       "Your first tutorial mission teaches fundamental ship control. Learn to activate engines, rotate your ship, and fire weapons. Master the radar system to detect enemies and coordinate fleet movements. Each lesson builds your skills for more complex battles."
   };
@@ -43,7 +43,7 @@ export function Home() {
           {/* Header */}
           <div className="text-center mb-16">
             <h1 className="header-font mb-4" style={{ fontSize: "4rem", letterSpacing: "0.2em" }}>
-              <span className="text-white neon-text">OORT.RS</span>
+              <span className="text-white neon-text">OORT.TS</span>
             </h1>
             <p className="code-font text-[#A8D8FF] text-sm tracking-wide">
               "Program your fleet. Command the void."
@@ -51,7 +51,7 @@ export function Home() {
           </div>
 
           {/* Cards Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
             <PageCard
               title="Tutorial"
               to="/game?mode=tutorial"
@@ -164,25 +164,6 @@ export function Home() {
               </PageCard>
             )}
 
-            <PageCard
-              title="Multi-Play"
-              to="/game?mode=multiplayer"
-              icon={
-                <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                  <path d="M16 20L20 16L16 12L12 16L16 20Z" stroke="currentColor" strokeWidth="2" />
-                  <path d="M32 36L36 32L32 28L28 32L32 36Z" stroke="currentColor" strokeWidth="2" />
-                  <path
-                    d="M18 18L30 30"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray="2 2"
-                  />
-                  <circle cx="24" cy="24" r="2" fill="currentColor" />
-                </svg>
-              }
-            >
-              <p className="text-[#A8D8FF]">"Code against real opponents."</p>
-            </PageCard>
           </div>
 
           {/* Introduction Section */}

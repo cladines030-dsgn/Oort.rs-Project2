@@ -32,17 +32,6 @@ export function CommandInputPanel({
           <h3 className="text-primary uppercase tracking-wider code-font text-sm neon-text">
             COMMAND INPUT
           </h3>
-          {mode === "multiplayer" && (
-            <div className="flex items-center gap-2 mt-1">
-              <div
-                className="w-2 h-2 rounded-full bg-[#A8D8FF]"
-                style={{
-                  boxShadow: "0 0 5px #A8D8FF"
-                }}
-              />
-              <span className="text-[#A8D8FF] text-xs code-font">YOU</span>
-            </div>
-          )}
         </div>
       </div>
 

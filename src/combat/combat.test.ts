@@ -319,7 +319,8 @@ describe("combat system MVP", () => {
       };
       const sim = createSimulationSystem();
       sim.initialize(1, config);
-      const targetInitHealth = sim.getState().ships[1].health;
+      const targetInitHealth = sim.getState().ships.find((ship) => ship.id === 1)?.health;
+      expect(targetInitHealth).toBeDefined();
 
       sim.registerShipCodeHook((id, _team, api) => {
         if (id === 0) {
@@ -337,10 +338,11 @@ describe("combat system MVP", () => {
       }
 
       const state = sim.getState();
-      const targetHealth = state.ships[1].health;
-      expect(targetHealth).toBeLessThan(targetInitHealth);
+      const targetHealth = state.ships.find((ship) => ship.id === 1)?.health;
+      expect(targetHealth).toBeDefined();
+      expect(targetHealth!).toBeLessThan(targetInitHealth!);
       // Gun does 10 damage per hit
-      expect(targetInitHealth - targetHealth).toBeCloseTo(10, 0);
+      expect(targetInitHealth! - targetHealth!).toBeCloseTo(10, 0);
     });
 
     test("ship death creates kill combat event", () => {
@@ -364,10 +366,13 @@ describe("combat system MVP", () => {
       let killed = false;
       for (let i = 0; i < 500 && !killed; i++) {
         const state = sim.step(1 / 60);
-        if (state.ships[1].health <= 0) {
+        const target = state.ships.find((ship) => ship.id === 1);
+        if (!target) {
           killed = true;
           const killEvents = state.combatEvents.filter((e) => e.type === "kill");
           expect(killEvents.length).toBeGreaterThan(0);
+          expect(killEvents[0].targetId).toBe(1);
+          expect(killEvents[0].targetTeam).toBe(1);
         }
       }
       expect(killed).toBe(true);
@@ -469,7 +474,7 @@ describe("combat system MVP", () => {
         let finalHealth = 100;
         for (let i = 0; i < 120; i++) {
           const state = sim.step(1 / 60);
-          finalHealth = state.ships[1]?.health ?? 100;
+          finalHealth = state.ships.find((ship) => ship.id === 1)?.health ?? 0;
         }
         return finalHealth;
       };

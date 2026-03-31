@@ -1,6 +1,6 @@
-# oort.tsx
+# Oort.ts
 
-oort.tsx is a browser-native programming strategy simulator inspired by Oort.rs. Players write TypeScript to control ships, run deterministic combat scenarios in the browser, and iterate against tutorials and challenge modes through a React-based interface.
+Oort.ts is a browser-native programming strategy simulator. Players write TypeScript to control ships, run deterministic combat scenarios in the browser, and iterate against tutorials and challenge modes through a React-based interface.
 
 ## Project Scope
 
@@ -87,7 +87,7 @@ npm run build
 
 ## Project Status
 
-This repository currently represents an in-progress but functional browser simulation prototype rather than a finished clone of Oort.rs.
+This repository currently represents an in-progress but functional browser simulation prototype for Oort.ts.
 
 
 ## Reference Docs
